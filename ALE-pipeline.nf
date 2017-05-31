@@ -73,15 +73,14 @@ process aleObserve{
   output:
   file "${bootstrap_clean}.ale" into aleObserved
 
-//  errorStrategy 'ignore'
   publishDir "ufboots", mode: 'copy'
+  validExitStatus 0,1
 //  stageInMode 'copy'
 
   script:
   """
-  set -e
   #docker run -v \$PWD:\$PWD alesuite ALEobserve \$PWD/$bootstrap_clean
-  /local/two/Software/ALE/ALE-build/bin/ALEobserve $bootstrap_clean || true
+  /local/two/Software/ALE/ALE-build/bin/ALEobserve $bootstrap_clean
   """
 }
 
@@ -91,9 +90,9 @@ process aleMlUndated{
   each species_tree from clean_species_tree
 
   output:
-  file "${ale}.ucons_tree" into uconsTrees
-  file "${ale}.uml_rec" into umlReconsiliation
-  file "${ale}.uTs" into uTransfers
+  set val("${species_tree.baseName}"), file("${ale}.ucons_tree") into uconsTrees
+  set val("${species_tree.baseName}"), file("${ale}.uml_rec") into umlReconsiliation
+  set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
   //errorStrategy 'ignore'
@@ -105,3 +104,26 @@ process aleMlUndated{
   """
 
 }
+
+process summmarizeDTLEvents{
+  input:
+  set val(species_tree), file(gene) from umlReconsiliation
+
+  output:
+  file "events.txt" into events
+
+  // publishDir "${params.output_ale}/${species_tree}", mode: 'copy'
+
+  script:
+  """
+  #! ${params.python3}
+
+  with open("$gene") as f, open('events.txt', 'w') as outhandle:
+    for line in f:
+      if any([line.startswith(x) for x in ['S_terminal_branch', 'S_internal_branch']]):
+        line = line.split()
+        print("\\t".join(['$species_tree', "${gene.baseName}"] + line[1:]), file=outhandle)
+  """
+}
+
+all_events = events.collectFile(name: 'events.txt', storeDir: params.output_ale)
