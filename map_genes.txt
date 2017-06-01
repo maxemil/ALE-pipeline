@@ -1,4 +1,4 @@
-Acidiphilium_cryptum_JF-5	AC
+Acidiphilium_cryptum_JF-5	ACJF
 Alphaproteobacteria_bacterium_RIFCSPLOWO2_01_FULL_40_26	ABRI
 Anaplasma_centrale_str._Israel	AC
 Anaplasma_marginale_str._Florida	AM

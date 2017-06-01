@@ -5,14 +5,16 @@ params.species_tree_file = '*.tree'
 params.genes_map = 'map_genes.txt'
 params.species_map = 'map_species.txt'
 params.output_ale = 'ALE_results'
-params.python3 = "/usr/local/bin/anapy3"
+params.output_trees = 'species_trees'
+params.output_samples = 'ufboots'
+params.python3 = '/usr/local/bin/anapy3'
 
 
 //bootstrap = Channel.from(file(params.input))
 bootstrap = Channel.fromPath(params.input_files)
 species_tree = Channel.fromPath(params.species_tree_file)
 genes_map = Channel.from(file(params.genes_map))
-species_map = Channel.from(file(params.species_map))
+Channel.from(file(params.species_map)).into { species_map; species_map_copy }
 
 process cleanSpeciesTree{
   input:
@@ -21,8 +23,9 @@ process cleanSpeciesTree{
 
   output:
   file "${species_tree.baseName}_clean.tree" into clean_species_tree
+  file "${species_tree.baseName}_root.tree" into rooted_species_tree
 
-  publishDir "species_trees", mode: 'copy'
+  publishDir params.output_trees, mode: 'copy'
 
   script:
   """
@@ -34,19 +37,17 @@ process cleanSpeciesTree{
   tree = Tree('$species_tree')
   new_root = tree.get_leaves_by_name('BIN125-1')[0].up
   tree.set_outgroup(new_root)
+  print(tree.write(), file=open("${species_tree.baseName}_root.tree", 'w'))
+
 
   tree.convert_to_ultrametric()
 
   species_map = {line.split()[0]: line.split()[1] for line in open('map_species.txt')}
 
-  edge = len(list(tree.traverse())) - len(list(tree.get_leaves()))
-  for node in tree.traverse():
-    if not node.is_leaf():
-      node.name = edge
-      edge -= 1
-    else:
-      node.name = species_map[node.name]
-  print(tree.write(format=3), file=open("${species_tree.baseName}_clean.tree", 'w'))
+  for leaf in tree.get_leaves():
+    leaf.name = species_map[leaf.name]
+
+  print(tree.write(), file=open("${species_tree.baseName}_clean.tree", 'w'))
   """
 }
 
@@ -73,7 +74,7 @@ process aleObserve{
   output:
   file "${bootstrap_clean}.ale" into aleObserved
 
-  publishDir "ufboots", mode: 'copy'
+  publishDir params.output_samples, mode: 'copy'
   validExitStatus 0,1
 //  stageInMode 'copy'
 
@@ -102,10 +103,9 @@ process aleMlUndated{
   #docker run -v \$PWD:\$PWD alesuite ALEml_undated \$PWD/$species_tree \$PWD/$ale
   /local/two/Software/ALE/ALE-build/bin/ALEml_undated $species_tree $ale
   """
-
 }
 
-process summmarizeDTLEvents{
+process extractDTLEvents{
   input:
   set val(species_tree), file(gene) from umlReconsiliation
 
@@ -127,3 +127,67 @@ process summmarizeDTLEvents{
 }
 
 all_events = events.collectFile(name: 'events.txt', storeDir: params.output_ale)
+
+process summmarizeDTLEvents{
+  input:
+  file all_events
+  file species_map from species_map_copy.first()
+
+  output:
+  stdout x
+  file "*.pdf" into tree_pdfs
+
+  beforeScript = "for d in \$(ls -d ${workflow.launchDir}/${params.output_ale}/*/); do grep '^S:' `ls \$d*uml_rec | shuf -n 1 | cat -` | cut -f2 > ${workflow.launchDir}/${params.output_trees}/\$(basename \$d).tree; done"
+  // beforeScript = "touch ${workflow.launchDir}/DONE"
+  publishDir "${params.output_trees}", mode: 'copy'
+
+  script:
+  """
+  #! ${params.python3}
+  import sys
+  sys.path.append('/local/two/Software/python_lib/')
+  import pandas as pd
+  import ete3
+  from ETE3_Utils import *
+  from numpy import log
+
+  def layout(node):
+    if node.is_leaf():
+        N = AttrFace("name", fsize=14, fgcolor="black")
+        faces.add_face_to_node(N, node, 0)
+    if "weight" in node.features:
+        # C = CircleFace(radius=log(node.weight), color="Red", style="sphere")
+        C = RectFace(width=node.weight, height=3, fgcolor="Red", bgcolor="Red")
+        faces.add_face_to_node(C, node, 0, position="float")
+
+  def add_genome_size(treeO, treeC, species_map, events, filename):
+    for n in treeO.traverse():
+      name = ''
+      if n.is_leaf():
+        name = species_map[n.name]
+      else:
+        name = get_ancestor([treeC.get_leaves_by_name(species_map[l.name])[0] for l in n.get_leaves()]).name
+      n.add_features(weight=events.loc[name]['copies'])
+    ts = TreeStyle()
+    ts.layout_fn = layout
+    ts.show_leaf_name = False
+    treeO.render(filename, tree_style=ts)
+
+  header = ['species_tree', 'cluster_ID', 'node', 'duplications',
+            'transfers', 'losses', 'originations', 'copies']
+  df = pd.read_csv("events.txt", sep='\\t', names=header)
+
+  species_map = {line.split()[0]: line.split()[1] for line in open("$species_map")}
+
+  split_df = [df[df['species_tree'] == t] for t in set(df.species_tree)]
+  for f in split_df:
+    add_genome_size(
+        ete3.Tree("$workflow.launchDir/$params.output_trees/%s.tree" % set(f.species_tree).pop().replace('_clean', '_root')),
+        ete3.Tree("$workflow.launchDir/$params.output_trees/%s.tree" % set(f.species_tree).pop(), format=1),
+        species_map,
+        f.groupby('node').sum(),
+        set(f.species_tree).pop() + ".pdf")
+  """
+}
+
+x.subscribe{print it}
