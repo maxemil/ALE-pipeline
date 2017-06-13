@@ -9,9 +9,11 @@ params.output_trees = 'species_trees'
 params.output_samples = 'ufboots'
 params.outgroup_taxa = '[""]'
 params.python3 = '/usr/local/bin/anapy3'
+params.fraction_missing = '""'
 
 
 //bootstrap = Channel.from(file(params.input))
+fraction_missing = Channel.from(file(params.fraction_missing))
 bootstrap = Channel.fromPath(params.input_files)
 species_tree = Channel.fromPath(params.species_tree_files)
 genes_map = Channel.from(file(params.genes_map))
@@ -89,6 +91,7 @@ process aleObserve{
 process aleMlUndated{
   input:
   file ale from aleObserved
+  file "fractionMissingGenes.txt" from fraction_missing.first()
   each species_tree from clean_species_tree
 
   output:
@@ -102,7 +105,7 @@ process aleMlUndated{
 
   script:
   """
-  maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEml_undated $species_tree \$PWD/$ale
+  maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEml_undated $species_tree \$PWD/$ale fraction_missing=\$PWD/fractionMissingGenes.txt
   """
 }
 
