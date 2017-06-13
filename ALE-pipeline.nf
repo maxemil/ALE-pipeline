@@ -1,19 +1,19 @@
 #!/usr/bin/env nextflow
 
 params.input_files = 'ufboots/*.ufboot'
-params.species_tree_file = '*.tree'
+params.species_tree_files = '*.tree'
 params.genes_map = 'map_genes.txt'
 params.species_map = 'map_species.txt'
 params.output_ale = 'ALE_results'
 params.output_trees = 'species_trees'
 params.output_samples = 'ufboots'
-params.outgroup_taxa = '["BIN125-1"]'
+params.outgroup_taxa = '[""]'
 params.python3 = '/usr/local/bin/anapy3'
 
 
 //bootstrap = Channel.from(file(params.input))
 bootstrap = Channel.fromPath(params.input_files)
-species_tree = Channel.fromPath(params.species_tree_file)
+species_tree = Channel.fromPath(params.species_tree_files)
 genes_map = Channel.from(file(params.genes_map))
 Channel.from(file(params.species_map)).into { species_map; species_map_copy }
 
@@ -34,25 +34,19 @@ process cleanSpeciesTree{
   print("${species_tree.baseName}")
 
   from ete3 import *
-  sys.path.append('/local/two/Software/python_lib/')
   from ETE3_Utils import *
   from ETE3_styles import *
 
-
   tree = Tree('$species_tree')
-  # new_root = tree.get_leaves_by_name('BIN125-1')[0].up
+
   new_root = get_ancestor([tree.get_leaves_by_name(s)[0] for s in $params.outgroup_taxa])
   tree.set_outgroup(new_root)
   print(tree.write(), file=open("${species_tree.baseName}_root.tree", 'w'))
 
-
   tree.convert_to_ultrametric()
-
   species_map = {line.split()[0]: line.split()[1] for line in open('map_species.txt')}
-
   for leaf in tree.get_leaves():
     leaf.name = species_map[leaf.name]
-
   print(tree.write(), file=open("${species_tree.baseName}_clean.tree", 'w'))
   """
 }
@@ -84,12 +78,11 @@ process aleObserve{
 
   publishDir params.output_samples, mode: 'copy'
   validExitStatus 0,1
-//  stageInMode 'copy'
+  container true
 
   script:
   """
-  #docker run -v \$PWD:\$PWD alesuite ALEobserve \$PWD/$bootstrap_clean
-  /local/two/Software/ALE/ALE-build/bin/ALEobserve $bootstrap_clean
+  maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEobserve \$PWD/$bootstrap_clean
   """
 }
 
@@ -104,12 +97,12 @@ process aleMlUndated{
   set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
-  //errorStrategy 'ignore'
+  container true
+  stageInMode 'copy'
 
   script:
   """
-  #docker run -v \$PWD:\$PWD alesuite ALEml_undated \$PWD/$species_tree \$PWD/$ale
-  /local/two/Software/ALE/ALE-build/bin/ALEml_undated $species_tree $ale
+  maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEml_undated $species_tree \$PWD/$ale
   """
 }
 
@@ -142,16 +135,12 @@ process summmarizeDTLEvents{
   file species_map from species_map_copy.first()
 
   output:
-  stdout x
   file "*.pdf" into tree_pdfs
   file "*.csv" into events_csv
 
   beforeScript = "for d in \$(ls -d ${workflow.launchDir}/${params.output_ale}/*/); do grep '^S:' `ls \$d*uml_rec | shuf -n 1 | cat -` | cut -f2 > ${workflow.launchDir}/${params.output_trees}/\$(basename \$d).tree; done"
-  // beforeScript = "touch ${workflow.launchDir}/DONE"
   publishDir "${params.output_trees}", mode: 'copy'
 
   script:
   template 'visualize_ALE_results.py'
   }
-
-x.subscribe{print it}
