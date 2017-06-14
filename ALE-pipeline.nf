@@ -9,11 +9,11 @@ params.output_trees = 'species_trees'
 params.output_samples = 'ufboots'
 params.outgroup_taxa = '[""]'
 params.python3 = '/usr/local/bin/anapy3'
-params.fraction_missing = '""'
+params.fraction_missing = false
 
 
 //bootstrap = Channel.from(file(params.input))
-fraction_missing = Channel.from(file(params.fraction_missing))
+fraction_missing = Channel.from(params.fraction_missing)
 bootstrap = Channel.fromPath(params.input_files)
 species_tree = Channel.fromPath(params.species_tree_files)
 genes_map = Channel.from(file(params.genes_map))
@@ -81,6 +81,7 @@ process aleObserve{
   publishDir params.output_samples, mode: 'copy'
   validExitStatus 0,1
   container true
+  errorStrategy 'retry'
 
   script:
   """
@@ -91,7 +92,7 @@ process aleObserve{
 process aleMlUndated{
   input:
   file ale from aleObserved
-  file "fractionMissingGenes.txt" from fraction_missing.first()
+  val fraction_missing from fraction_missing.first()
   each species_tree from clean_species_tree
 
   output:
@@ -100,13 +101,22 @@ process aleMlUndated{
   set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
-  container true
-  stageInMode 'copy'
+  // container true
+  // stageInMode 'copy'
+  errorStrategy 'retry'
+
 
   script:
-  """
-  maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEml_undated $species_tree \$PWD/$ale fraction_missing=\$PWD/fractionMissingGenes.txt
-  """
+  if (fraction_missing){
+      """
+      maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEml_undated $species_tree \$PWD/$ale fraction_missing=\$PWD/fractionMissingGenes.txt
+      """
+  } else {
+      """
+      /local/two/Software/ALE/ALE-build/bin/ALEml_undated $species_tree $ale
+      #maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEml_undated $species_tree \$PWD/$ale
+      """
+  }
 }
 
 process extractDTLEvents{
