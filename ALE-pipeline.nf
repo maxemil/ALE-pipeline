@@ -13,7 +13,7 @@ params.fraction_missing = false
 
 
 //bootstrap = Channel.from(file(params.input))
-fraction_missing = Channel.from(params.fraction_missing)
+if(params.fraction_missing){fraction_missing = Channel.from(file(params.fraction_missing))}else{fraction_missing = Channel.from(params.fraction_missing)}
 bootstrap = Channel.fromPath(params.input_files)
 species_tree = Channel.fromPath(params.species_tree_files)
 genes_map = Channel.from(file(params.genes_map))
@@ -82,18 +82,21 @@ process aleObserve{
   validExitStatus 0,1
   container true
   errorStrategy 'retry'
+  maxRetries 5
 
   script:
   """
-  maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEobserve \$PWD/$bootstrap_clean
+  maxemil/alesuite:latest ALEobserve \$PWD/$bootstrap_clean
   """
 }
 
+species_tree_vs_ale = clean_species_tree.combine(aleObserved)
+
 process aleMlUndated{
   input:
-  file ale from aleObserved
-  val fraction_missing from fraction_missing.first()
-  each species_tree from clean_species_tree
+  set file(species_tree), file(ale) from species_tree_vs_ale
+  file fraction_missing from fraction_missing.first()
+  // each species_tree from clean_species_tree
 
   output:
   set val("${species_tree.baseName}"), file("${ale}.ucons_tree") into uconsTrees
@@ -101,20 +104,20 @@ process aleMlUndated{
   set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
-  // container true
-  // stageInMode 'copy'
+  container true
+  stageInMode 'copy'
   errorStrategy 'retry'
-
-
+  maxRetries 5
+  
   script:
   if (fraction_missing){
       """
-      maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEml_undated $species_tree \$PWD/$ale fraction_missing=\$PWD/fractionMissingGenes.txt
+      maxemil/alesuite:latest ALEml_undated \$PWD/$species_tree \$PWD/$ale fraction_missing=\$PWD/fractionMissingGenes.txt
       """
   } else {
       """
-      /local/two/Software/ALE/ALE-build/bin/ALEml_undated $species_tree $ale
-      #maxemil/alesuite:latest /usr/local/ALE/build/bin/ALEml_undated $species_tree \$PWD/$ale
+      #/local/two/Software/ALE/ALE-build/bin/ALEml_undated \$PWD/$species_tree $ale
+      maxemil/alesuite:latest ALEml_undated \$PWD/$species_tree \$PWD/$ale
       """
   }
 }
