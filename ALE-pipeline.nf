@@ -1,16 +1,22 @@
 #!/usr/bin/env nextflow
 
-params.input_files = 'ufboots/*.ufboot'
-params.species_tree_files = '*.tree'
-params.genes_map = 'map_genes.txt'
-params.species_map = 'map_species.txt'
-params.output_ale = 'ALE_results'
-params.output_trees = 'species_trees'
-params.output_samples = 'ufboots'
-params.outgroup_taxa = '[""]'
-params.python3 = '/usr/local/bin/anapy3'
-params.fraction_missing = false
+def startup_message() {
+    log.info "============================================"
+    log.info "               ALE pipeline"
+    log.info "============================================"
+    log.info "Input gene tree samples (GT)   : $params.input_files"
+    log.info "Input species trees (ST)       : $params.species_tree_files"
+    log.info "Map species names in GT        : $params.genes_map"
+    log.info "Map species names in ST        : $params.species_map"
+    log.info "Output dir for ALE ml          : $params.output_ale"
+    log.info "Output dir for ALE observe     : $params.output_samples"
+    log.info "Output dir for ST and pdfs     : $params.output_trees"
+    log.info "Outgroup taxa use to root ST   : $params.outgroup_taxa"
+    log.info "Currently looks for separator _i_ between species and genes"
+    log.info ""
+}
 
+startup_message()
 
 //bootstrap = Channel.from(file(params.input))
 if(params.fraction_missing){fraction_missing = Channel.from(file(params.fraction_missing))}else{fraction_missing = Channel.from(params.fraction_missing)}
@@ -31,26 +37,7 @@ process cleanSpeciesTree{
   publishDir params.output_trees, mode: 'copy'
 
   script:
-  """
-  #! ${params.python3}
-  print("${species_tree.baseName}")
-
-  from ete3 import *
-  from ETE3_Utils import *
-  from ETE3_styles import *
-
-  tree = Tree('$species_tree')
-
-  new_root = get_ancestor([tree.get_leaves_by_name(s)[0] for s in $params.outgroup_taxa])
-  tree.set_outgroup(new_root)
-  print(tree.write(), file=open("${species_tree.baseName}_root.tree", 'w'))
-
-  tree.convert_to_ultrametric()
-  species_map = {line.split()[0]: line.split()[1] for line in open('map_species.txt')}
-  for leaf in tree.get_leaves():
-    leaf.name = species_map[leaf.name]
-  print(tree.write(), file=open("${species_tree.baseName}_clean.tree", 'w'))
-  """
+  template 'cleanSpeciesTree.py'
 }
 
 process cleanNames{
@@ -61,13 +48,13 @@ process cleanNames{
   output:
   file "${bootstrap}.clean" into bootstrap_clean
 
-  maxForks 1
+  // maxForks 1
 
   script:
   """
-  cp $bootstrap "${bootstrap}.preclean"
-  anapy3 /local/two/Software/IdeaProjects/Python3_scripts/replace_names.py -i map_genes.txt -f "${bootstrap}.preclean"
-  sed -r 's/_i_/???/g' "${bootstrap}.preclean" | sed -r 's/_//g' | sed 's/???/_/g' | sed -r 's/\\.[1|2]:/:/g' > "${bootstrap}.clean"
+  cp $bootstrap "${bootstrap}.clean"
+  $workflow.projectDir/scripts/replace_names.py -i map_genes.txt -f "${bootstrap}.clean"
+  sed -r -i 's/([^_i])_([^i_])/\\1\\2/g;s/_i_/_/g;s/\\.[1|2]:/:/g' "${bootstrap}.clean"
   """
 }
 
@@ -108,7 +95,7 @@ process aleMlUndated{
   stageInMode 'copy'
   errorStrategy 'retry'
   maxRetries 5
-  
+
   script:
   if (fraction_missing){
       """
@@ -132,15 +119,7 @@ process extractDTLEvents{
   // publishDir "${params.output_ale}/${species_tree}", mode: 'copy'
 
   script:
-  """
-  #! ${params.python3}
-
-  with open("$gene") as f, open('events.txt', 'w') as outhandle:
-    for line in f:
-      if any([line.startswith(x) for x in ['S_terminal_branch', 'S_internal_branch']]):
-        line = line.split()
-        print("\\t".join(['$species_tree', "${gene.baseName}"] + line[1:]), file=outhandle)
-  """
+  template "extractDTLevents.py"
 }
 
 all_events = events.collectFile(name: 'events.txt', storeDir: params.output_ale)
