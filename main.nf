@@ -67,13 +67,13 @@ process aleObserve{
 
   publishDir params.output_samples, mode: 'copy'
   validExitStatus 0,1
-  container true
+  container 'maxemil/alesuite:latest'
   errorStrategy 'retry'
   maxRetries 5
 
   script:
   """
-  maxemil/alesuite:latest ALEobserve \$PWD/$bootstrap_clean
+  ALEobserve \$PWD/$bootstrap_clean
   """
 }
 
@@ -82,7 +82,7 @@ species_tree_vs_ale = clean_species_tree.combine(aleObserved)
 process aleMlUndated{
   input:
   set file(species_tree), file(ale) from species_tree_vs_ale
-  file fraction_missing from fraction_missing.first()
+  val fraction_missing from fraction_missing.first()
   // each species_tree from clean_species_tree
 
   output:
@@ -91,7 +91,7 @@ process aleMlUndated{
   set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
-  container true
+  container 'maxemil/alesuite:latest'
   stageInMode 'copy'
   errorStrategy 'retry'
   maxRetries 5
@@ -99,12 +99,11 @@ process aleMlUndated{
   script:
   if (fraction_missing){
       """
-      maxemil/alesuite:latest ALEml_undated \$PWD/$species_tree \$PWD/$ale fraction_missing=\$PWD/fractionMissingGenes.txt
+      ALEml_undated \$PWD/$species_tree \$PWD/$ale fraction_missing=\$PWD/fractionMissingGenes.txt
       """
   } else {
       """
-      #/local/two/Software/ALE/ALE-build/bin/ALEml_undated \$PWD/$species_tree $ale
-      maxemil/alesuite:latest ALEml_undated \$PWD/$species_tree \$PWD/$ale
+      ALEml_undated \$PWD/$species_tree \$PWD/$ale
       """
   }
 }

@@ -1,4 +1,4 @@
-#! /usr/local/bin/anapy3
+#! ${params.python3}
 import sys
 import pandas as pd
 import ete3
