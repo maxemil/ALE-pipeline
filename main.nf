@@ -1,9 +1,9 @@
 #!/usr/bin/env nextflow
 
 def startup_message() {
-    log.info "============================================"
-    log.info "               ALE pipeline"
-    log.info "============================================"
+    log.info "=========================================================="
+    log.info "                       ALE pipeline"
+    log.info "=========================================================="
     log.info "Input gene tree samples (GT)   : $params.input_files"
     log.info "Input species trees (ST)       : $params.species_tree_files"
     log.info "Map species names in GT        : $params.genes_map"
@@ -12,14 +12,28 @@ def startup_message() {
     log.info "Output dir for ALE observe     : $params.output_samples"
     log.info "Output dir for ST and pdfs     : $params.output_trees"
     log.info "Outgroup taxa use to root ST   : $params.outgroup_taxa"
+    log.info "Fraction of missing genes      : $params.fraction_missing"
+    log.info "Python 3 binary used           : $params.python3"
+    log.info ""
     log.info "Currently looks for separator _i_ between species and genes"
+    log.info "Also need acces to Python_lib from ettemalab's bitbucket!"
     log.info ""
 }
 
 startup_message()
 
 //bootstrap = Channel.from(file(params.input))
-if(params.fraction_missing){fraction_missing = Channel.from(file(params.fraction_missing))}else{fraction_missing = Channel.from(params.fraction_missing)}
+if(params.fraction_missing){
+  fraction_missing = Channel.from(file(params.fraction_missing))
+}else{
+  File temp = new File("temp.tmp")
+  temp.with{
+    write "hello temp file!"
+    deleteOnExit()}
+  // File.createNewFile("temp.tmp").with{deleteOnExit()}
+  // File.createTempFile("temp",".tmp", File("$workflow.launchDir")).with{deleteOnExit()}
+  fraction_missing = Channel.from(file("temp.tmp"))
+}
 bootstrap = Channel.fromPath(params.input_files)
 species_tree = Channel.fromPath(params.species_tree_files)
 genes_map = Channel.from(file(params.genes_map))
@@ -82,8 +96,7 @@ species_tree_vs_ale = clean_species_tree.combine(aleObserved)
 process aleMlUndated{
   input:
   set file(species_tree), file(ale) from species_tree_vs_ale
-  val fraction_missing from fraction_missing.first()
-  // each species_tree from clean_species_tree
+  file fraction_missing from fraction_missing.first()
 
   output:
   set val("${species_tree.baseName}"), file("${ale}.ucons_tree") into uconsTrees
@@ -97,13 +110,13 @@ process aleMlUndated{
   maxRetries 5
 
   script:
-  if (fraction_missing){
+  if (fraction_missing ==~ /.*tmp/){
       """
-      ALEml_undated \$PWD/$species_tree \$PWD/$ale fraction_missing=\$PWD/fractionMissingGenes.txt
+      ALEml_undated \$PWD/$species_tree \$PWD/$ale
       """
   } else {
       """
-      ALEml_undated \$PWD/$species_tree \$PWD/$ale
+      ALEml_undated \$PWD/$species_tree \$PWD/$ale fraction_missing=\$PWD/$fraction_missing
       """
   }
 }
