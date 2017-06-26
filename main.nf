@@ -23,17 +23,7 @@ def startup_message() {
 startup_message()
 
 //bootstrap = Channel.from(file(params.input))
-if(params.fraction_missing){
-  fraction_missing = Channel.from(file(params.fraction_missing))
-}else{
-  File temp = new File("temp.tmp")
-  temp.with{
-    write "hello temp file!"
-    deleteOnExit()}
-  // File.createNewFile("temp.tmp").with{deleteOnExit()}
-  // File.createTempFile("temp",".tmp", File("$workflow.launchDir")).with{deleteOnExit()}
-  fraction_missing = Channel.from(file("temp.tmp"))
-}
+fraction_missing = create_channel_fraction_missing()
 bootstrap = Channel.fromPath(params.input_files)
 species_tree = Channel.fromPath(params.species_tree_files)
 genes_map = Channel.from(file(params.genes_map))
@@ -151,3 +141,17 @@ process summmarizeDTLEvents{
   script:
   template 'visualize_ALE_results.py'
   }
+
+
+def create_channel_fraction_missing() {
+  if(params.fraction_missing){
+    return(Channel.from(file(params.fraction_missing)))
+  }else{
+    File temp = new File("temp.tmp")
+    temp.with{
+      write "hello temp file!"
+      deleteOnExit()
+    }
+    return(Channel.from(file("temp.tmp")))
+  }
+}
