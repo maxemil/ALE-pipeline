@@ -11,11 +11,14 @@ def startup_message() {
     log.info "Output dir for ALE ml          : $params.output_ale"
     log.info "Output dir for ALE observe     : $params.output_samples"
     log.info "Output dir for ST and pdfs     : $params.output_trees"
+    log.info "Extension of GT samples        : $params.input_extension"
     log.info "Outgroup taxa use to root ST   : $params.outgroup_taxa"
     log.info "Fraction of missing genes      : $params.fraction_missing"
     log.info "Python 3 binary used           : $params.python3"
     log.info ""
     log.info "Currently looks for separator _i_ between species and genes"
+    log.info "if no extensions is given for input files, takes all files "
+    log.info "in that directory"
     log.info "Also need acces to Python_lib from ettemalab's bitbucket!"
     log.info ""
 }
@@ -24,7 +27,7 @@ startup_message()
 
 //bootstrap = Channel.from(file(params.input))
 fraction_missing = create_channel_fraction_missing()
-bootstrap = Channel.fromPath(params.input_files)
+bootstrap = Channel.fromPath("$params.input_files/*$params.input_extension")
 species_tree = Channel.fromPath(params.species_tree_files)
 genes_map = Channel.from(file(params.genes_map))
 Channel.from(file(params.species_map)).into { species_map; species_map_copy }
@@ -58,7 +61,7 @@ process cleanNames{
   """
   cp $bootstrap "${bootstrap}.clean"
   $workflow.projectDir/scripts/replace_names.py -i map_genes.txt -f "${bootstrap}.clean"
-  sed -r -i 's/([^_i])_([^i_])/\\1\\2/g;s/_i_/_/g;s/\\.[1|2]:/:/g' "${bootstrap}.clean"
+  sed -r -i 's/([^_i])_([^i_])/\\1\\2/g;s/_i_/_/g;s/\\.[1-9]:/:/g' "${bootstrap}.clean"
   """
 }
 
