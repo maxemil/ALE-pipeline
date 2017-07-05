@@ -7,8 +7,8 @@
 - typical usage would be like so:
   ```
   nextflow run ALE-pipeline/main.nf --species_tree_files "prefix*.tree" \
-                                    --input_files ufboots \
-                                    --input_extension '.ufboot' \
+                                    --input_files samples \
+                                    --input_extension '.extension' \
                                     --outgroup_taxa '["tax1", "tax2"]' \
                                     --fraction_missing fractionMissingGenes.txt \
                                     --genes_map map_genes.txt \
@@ -29,3 +29,6 @@
   # clean up:
   rm -r work ALE_results species_trees ufboots .nextflow*
   ```
+
+# Troubleshooting
+* If you get an Error 'Can't root with myself' or similar, this usually means that the outgroup you specified for the species tree is not monophyletic in that tree. Try rerooting by hand first...

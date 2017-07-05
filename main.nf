@@ -3,6 +3,8 @@
 def startup_message() {
     log.info "=========================================================="
     log.info "                       ALE pipeline"
+    log.info "Author                         : Max Emil Schön"
+    log.info "email                          : max-emil.schon@icm.uu.se"
     log.info "=========================================================="
     log.info "Input gene tree samples (GT)   : $params.input_files"
     log.info "Input species trees (ST)       : $params.species_tree_files"
