@@ -32,3 +32,19 @@
 
 # Troubleshooting
 * If you get an Error 'Can't root with myself' or similar, this usually means that the outgroup you specified for the species tree is not monophyletic in that tree. Try rerooting by hand first...
+
+
+# Getting an overwie of gains and losses for certain node_pairs
+assuming you have annotated all proteins in your clusters (cluster_faas) with the emapper, and the `.annotation` files are in eggnog_output, you can get a summary of losses and gains as well as general description of you clusters with the script `match_cluster_eggnog.py`:
+```
+python3 scripts/match_cluster_eggnog.py --faas cluster_faas/* \
+                                        --annotations eggnog_output/*.annotations  \
+                                        --nodes 83 82 81 \
+                                        --threshold 0.5 \
+                                        --species_tree Alphaproteobacteria_species_recoded_clean \
+                                        --node_pairs 84 83 83 82 82 81 \
+                                        --cluster_out 'cluster_OG.tab'
+                                        --annotation_extension '.faa.emapper.annotations' \
+                                        --cluster_extension '.bmge.aln.ufboot.clean.ale'
+```
+* this will produce a file `cluster_OG.tab` with annotation info for all clusters, a set of files for each nodes, where only those clusters are in that are present (> threshold) in that node and finally a set of files that only list gains and losses for each node pair (OBS node pairs params has to be a multiple of two).
