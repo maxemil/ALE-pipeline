@@ -36,7 +36,7 @@ def simple_tree_style():
 
 def add_genome_size(treeO, treeC, species_map, events, filename):
     def scale(x):
-        return int((x / 500)) * 2
+        return int((x / 200)) * 2
     events.to_csv(filename.replace('pdf', 'csv'), sep='\t')
     for n in treeO.traverse():
         name = ''
@@ -66,6 +66,11 @@ def main():
 
     split_df = [df[df['species_tree'] == t] for t in set(df.species_tree)]
     for f in split_df:
+        split_df['copies'] = split_df['copies'].apply(round)
+        split_df['transfers'] = split_df['transfers'].apply(round)
+        split_df['originations'] = split_df['originations'].apply(round)
+        split_df['losses'] = split_df['losses'].apply(round)
+        split_df['duplications'] = split_df['duplications'].apply(round)
         add_genome_size(
             ete3.Tree("$workflow.launchDir/$params.output_trees/%s.tree" %
                       set(f.species_tree).pop().replace('_clean', '_root')),
