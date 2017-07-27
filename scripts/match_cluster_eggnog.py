@@ -117,7 +117,7 @@ def add_NOG_drop_cols(df, cluster_cogs, cluster_extension):
     df['NOG'] = df.apply(lambda row: cluster_cogs[row['clst']] ,axis=1)
     return df
 
-def describe_ancestral_node(cluster_cogs, cog_description, cog_category, ancestor_node, species_tree, events_file, threshold, cluster_extension):
+def describe_ancestral_node(cluster_cogs, cog_description, cog_category, ancestor_node, species_tree, events_file, threshold, cluster_extension, oneline):
     def print_internal(nog, line, count, out, nog_cat, nog_desc):
         print("\t".join([line[1]['clst'],
                         nog,
@@ -228,7 +228,7 @@ def main(args):
     # species_tree = "Alphaproteobacteria_species_recoded_clean"
     events_file = "events.txt"
     for ancestor_node in args.ancestor_nodes:
-        describe_ancestral_node(cluster_cogs, cog_description, cog_category, ancestor_node, args.species_tree, events_file, args.threshold, args.cluster_extension)
+        describe_ancestral_node(cluster_cogs, cog_description, cog_category, ancestor_node, args.species_tree, events_file, args.threshold, args.cluster_extension, args.oneline)
     if args.node_pairs:
         for i in range(0,len(args.node_pairs),2):
             differences_nodes(cluster_cogs, cog_description, cog_category, args.node_pairs[i], args.node_pairs[i + 1], args.species_tree, events_file, args.threshold, args.cluster_extension)
