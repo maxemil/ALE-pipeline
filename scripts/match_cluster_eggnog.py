@@ -26,7 +26,7 @@ parser.add_argument("-ae", "--annotation_extension", required=False, default='.f
                     help="extension fo annotation files, default='.faa.emapper.annotations'")
 parser.add_argument("-ce", "--cluster_extension", required=False, default='.bmge.aln.ufboot.clean.ale',
                     help="extension for cluster in events, default='.bmge.aln.ufboot.clean.ale'")
-parser.add_argument("--oneline", required=False, default=False, store_action=True,
+parser.add_argument("--oneline", required=False, default=False, action='store_true',
                     help="flag for formatting, one line per cluster and summary of present COGs")
 args = parser.parse_args()
 
