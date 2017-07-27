@@ -26,6 +26,8 @@ parser.add_argument("-ae", "--annotation_extension", required=False, default='.f
                     help="extension fo annotation files, default='.faa.emapper.annotations'")
 parser.add_argument("-ce", "--cluster_extension", required=False, default='.bmge.aln.ufboot.clean.ale',
                     help="extension for cluster in events, default='.bmge.aln.ufboot.clean.ale'")
+parser.add_argument("--oneline", required=False, default=False, store_action=True,
+                    help="flag for formatting, one line per cluster and summary of present COGs")
 args = parser.parse_args()
 
 
@@ -116,6 +118,18 @@ def add_NOG_drop_cols(df, cluster_cogs, cluster_extension):
     return df
 
 def describe_ancestral_node(cluster_cogs, cog_description, cog_category, ancestor_node, species_tree, events_file, threshold, cluster_extension):
+    def print_internal(nog, line, count, out, nog_cat, nog_desc):
+        print("\t".join([line[1]['clst'],
+                        nog,
+                        str(count),
+                        str(line[1]['duplications']),
+                        str(line[1]['transfers']),
+                        str(line[1]['losses']),
+                        str(line[1]['originations']),
+                        str(line[1]['copies']),
+                        nog_cat,
+                        nog_desc]), file=out)
+
     pd.options.mode.chained_assignment = None
     header = ['species_tree', 'cluster', 'node', 'duplications',
               'transfers', 'losses', 'originations', 'copies']
@@ -135,18 +149,25 @@ def describe_ancestral_node(cluster_cogs, cog_description, cog_category, ancesto
                          "transfers", "losses", "originations", "copies",
                          "NOG_category", "NOG_description"]), file=out)
         for line in ancestor.iterrows():
-            for nog, count in line[1]['NOG'].items():
-                print("\t".join([line[1]['clst'],
-                                nog,
-                                str(count),
-                                str(line[1]['duplications']),
-                                str(line[1]['transfers']),
-                                str(line[1]['losses']),
-                                str(line[1]['originations']),
-                                str(line[1]['copies']),
-                                cog_category[nog],
-                                cog_description[nog]
-                                ]), file=out)
+            if oneline:
+                nogs = ";".join([nog for nog, count in line[1]['NOG'].items()])
+                counts = ";".join([counts for nog, count in line[1]['NOG'].items()])
+                cog_cats = ";".join([cog_category[nog] for nog, count in line[1]['NOG'].items()])
+                cog_descs = ";".join([cog_description[nog] for nog, count in line[1]['NOG'].items()])
+                print_internal(nogs,
+                               line,
+                               counts,
+                               out,
+                               cog_cats,
+                               cog_descs)
+            else:
+                for nog, count in line[1]['NOG'].items():
+                    print_internal(nog,
+                                   line,
+                                   count,
+                                   out,
+                                   cog_category[nog],
+                                   cog_description[nog])
 
 
 def differences_nodes(cluster_cogs, cog_description, cog_category, ancestor_node1, ancestor_node2, species_tree, events_file, threshold, cluster_extension):
