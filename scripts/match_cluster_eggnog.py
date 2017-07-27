@@ -151,8 +151,8 @@ def describe_ancestral_node(cluster_cogs, cog_description, cog_category, ancesto
         for line in ancestor.iterrows():
             if oneline:
                 nogs = ";".join([nog for nog, count in line[1]['NOG'].items()])
-                counts = ";".join([counts for nog, count in line[1]['NOG'].items()])
-                cog_cats = ";".join([cog_category[nog] for nog, count in line[1]['NOG'].items()])
+                counts = ";".join([str(count) for nog, count in line[1]['NOG'].items()])
+                cog_cats = ";".join(set([cog_category[nog] for nog, count in line[1]['NOG'].items()]))
                 cog_descs = ";".join([cog_description[nog] for nog, count in line[1]['NOG'].items()])
                 print_internal(nogs,
                                line,
