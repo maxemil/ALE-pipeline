@@ -18,7 +18,7 @@ parser.add_argument("-n", "--ancestor_nodes", required=True, nargs='+',
                     help="list of ancestor_nodes, ex '-n 83 82 81'")
 parser.add_argument("-s", "--species_tree", required=True,
                     help="name of the species tree in 'events.txt'")
-parser.add_argument("-th", "--threshold", required=False, default=0.5,
+parser.add_argument("-th", "--threshold", required=False, default=0.5, type=float,
                     help="threshold for considering a gene cluster to be present, default 0.5")
 parser.add_argument("-np", "--node_pairs", required=False, nargs='+',
                     help="threshold for considering a gene cluster to be present,ex '-np 83 82 82 81'  to get 82to81 and 83to82")
@@ -142,7 +142,7 @@ def describe_ancestral_node(cluster_cogs, cog_description, cog_category, ancesto
     ancestor = add_NOG_drop_cols(ancestor, cluster_cogs, cluster_extension)
 
     # drop cluters that are not present in node
-    ancestor = ancestor[ancestor.ix[:,0:5].apply(max, axis=1) > threshold]
+    ancestor = ancestor[ancestor.ix[:,4] > threshold]
 
     with open('%s_cluster_OG.tab' % ancestor_node, 'w') as out:
         print("\t".join(["cluster", "NOG", '#NOG_annotations', "duplications",
@@ -202,7 +202,7 @@ def differences_nodes(cluster_cogs, cog_description, cog_category, ancestor_node
         for line in gains_df.iterrows():
             gain_type = "-"
             if line[1]['transfers'] >= 0.5:
-                gain_type = "tranfer"
+                gain_type = "transfer"
             elif line[1]['originations'] >= 0.5:
                 gain_type = "origination"
             elif line[1]['transfers'] >= 0.5 and line[1]['originations'] >= 0.5:
