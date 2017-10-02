@@ -35,7 +35,7 @@
 
 
 # Getting an overwie of gains and losses for certain node_pairs
-assuming you have annotated all proteins in your clusters (cluster_faas) with the emapper, and the `.annotation` files are in eggnog_output, you can get a summary of losses and gains as well as general description of you clusters with the script `match_cluster_eggnog.py`:
+assuming you have annotated all proteins in your clusters (cluster_faas) with the emapper, and the `.annotation` files are in eggnog_output, you can get a summary of losses and gains as well as a general description of you clusters with the script `match_cluster_eggnog.py`:
 ```
 python3 scripts/match_cluster_eggnog.py --faas cluster_faas/* \
                                         --annotations eggnog_output/*.annotations  \
@@ -48,4 +48,4 @@ python3 scripts/match_cluster_eggnog.py --faas cluster_faas/* \
                                         --cluster_extension '.bmge.aln.ufboot.clean.ale' \
                                         --oneline
 ```
-* this will produce a file `cluster_OG.tab` with annotation info for all clusters, a set of files for each nodes, where only those clusters are in that are present (> threshold) in that node and finally a set of files that only list gains and losses for each node pair (OBS node pairs params has to be a multiple of two).
+* this will produce a file `cluster_OG.tab` with annotation info for all clusters, a set of files for each node, where only those clusters that are present (> threshold) in that node and finally a set of files that only list gains and losses for each node pair (OBS node pairs params has to be a multiple of two).
