@@ -76,7 +76,7 @@ process aleObserve{
 
   publishDir params.output_samples, mode: 'copy'
   validExitStatus 0,1
-  container 'maxemil/alesuite:latest'
+  container 'ALE.img'
   errorStrategy 'retry'
   maxRetries 5
 
@@ -99,7 +99,7 @@ process aleMlUndated{
   set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
-  container 'maxemil/alesuite:latest'
+  container 'ALE.img'
   stageInMode 'copy'
   errorStrategy 'retry'
   maxRetries 5
