@@ -44,6 +44,7 @@ process cleanSpeciesTree{
   file "${species_tree.baseName}_root.tree" into rooted_species_tree
 
   publishDir params.output_trees, mode: 'copy'
+  tag {"${species_tree.simpleName}"}
 
   script:
   template 'cleanSpeciesTree.py'
@@ -57,7 +58,7 @@ process cleanNames{
   output:
   file "${bootstrap}.clean" into bootstrap_clean
 
-  // maxForks 1
+  tag {"${bootstrap.simpleName}"}
 
   script:
   """
@@ -79,6 +80,7 @@ process aleObserve{
   container 'ALE.img'
   errorStrategy 'retry'
   maxRetries 5
+  tag {"${bootstrap_clean.simpleName}"}
 
   script:
   """
@@ -103,6 +105,7 @@ process aleMlUndated{
   stageInMode 'copy'
   errorStrategy 'retry'
   maxRetries 5
+  tag {"${ale.simpleName}"}
 
   script:
   if (fraction_missing ==~ /.*tmp/){
@@ -123,6 +126,7 @@ process extractDTLEvents{
   output:
   file "events.txt" into events
 
+  tag {"${gene.simpleName}"}
   // publishDir "${params.output_ale}/${species_tree}", mode: 'copy'
 
   script:
