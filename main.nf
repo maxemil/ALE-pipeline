@@ -18,7 +18,7 @@ def startup_message() {
     log.info "Fraction of missing genes      : $params.fraction_missing"
     log.info "Python 3 binary used           : $params.python3"
     log.info ""
-    log.info "Currently looks for separator _i_ between species and genes"
+    log.info "Currently looks for separator $params.separator between species and genes"
     log.info "if no extensions is given for input files, takes all files "
     log.info "in that directory"
     log.info "Also need acces to Python_lib from ettemalab's bitbucket!"
@@ -30,9 +30,10 @@ startup_message()
 //bootstrap = Channel.from(file(params.input))
 fraction_missing = create_channel_fraction_missing()
 bootstrap = Channel.fromPath("$params.input_files/*$params.input_extension")
-species_tree = Channel.fromPath(params.species_tree_files)
-genes_map = Channel.from(file(params.genes_map))
+Channel.fromPath(params.species_tree_files).into { species_tree; species_tree_single_cluster }
+Channel.from(file(params.genes_map)).into { genes_map; genes_map_single_clusters }
 Channel.from(file(params.species_map)).into { species_map; species_map_copy }
+single_cluster =  Channel.fromPath(params.single_cluster)
 
 process cleanSpeciesTree{
   input:
@@ -64,7 +65,7 @@ process cleanNames{
   """
   cp $bootstrap "${bootstrap}.clean"
   replace_names.py -i map_genes.txt -f "${bootstrap}.clean"
-  sed -r -i 's/([^_i])_([^i_])/\\1\\2/g;s/_i_/_/g;s/\\.[1-9]:/:/g' "${bootstrap}.clean"
+  sed -r -i 's/([^_i])_([^i_])/\\1\\2/g;s/$params.separator/_/g;s/\\.[1-9]:/:/g' "${bootstrap}.clean"
   """
 }
 
@@ -133,7 +134,26 @@ process extractDTLEvents{
   template "extractDTLevents.py"
 }
 
-all_events = events.collectFile(name: 'events.txt', storeDir: params.output_ale)
+process includeSingleClusters {
+  input:
+  file fasta from single_cluster
+  file 'map_genes.txt' from genes_map_single_clusters.first()
+  each species_tree from species_tree_single_cluster
+
+  output:
+  file "events.txt" into single_cluster_events
+
+  tag {"${fasta.simpleName}"}
+
+  script:
+  """
+  cp $fasta ${fasta}.clean
+  replace_names.py -i map_genes.txt -f ${fasta}.clean
+  grep '>' ${fasta}.clean | cut -d '>' -f 2 | awk -F '$params.separator' '{print "${species_tree.baseName}_clean\\t$fasta.simpleName\\t"\$1"\\t0\\t0\\t0\\t0\\t1"}' > events.txt
+  """
+}
+
+all_events = events.concat(single_cluster_events).collectFile(name: 'events.txt', storeDir: params.output_ale)
 
 process summmarizeDTLEvents{
   input:
