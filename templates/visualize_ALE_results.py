@@ -66,11 +66,11 @@ def main():
 
     split_df = [df[df['species_tree'] == t] for t in set(df.species_tree)]
     for f in split_df:
-        split_df['copies'] = split_df['copies'].apply(round)
-        split_df['transfers'] = split_df['transfers'].apply(round)
-        split_df['originations'] = split_df['originations'].apply(round)
-        split_df['losses'] = split_df['losses'].apply(round)
-        split_df['duplications'] = split_df['duplications'].apply(round)
+        f['copies'] = f['copies'].apply(round)
+        f['transfers'] = f['transfers'].apply(round)
+        f['originations'] = f['originations'].apply(round)
+        f['losses'] = f['losses'].apply(round)
+        f['duplications'] = f['duplications'].apply(round)
         add_genome_size(
             ete3.Tree("$workflow.launchDir/$params.output_trees/%s.tree" %
                       set(f.species_tree).pop().replace('_clean', '_root')),
