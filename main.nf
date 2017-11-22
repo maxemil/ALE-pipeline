@@ -63,7 +63,7 @@ process cleanNames{
   script:
   """
   cp $bootstrap "${bootstrap}.clean"
-  $workflow.projectDir/scripts/replace_names.py -i map_genes.txt -f "${bootstrap}.clean"
+  replace_names.py -i map_genes.txt -f "${bootstrap}.clean"
   sed -r -i 's/([^_i])_([^i_])/\\1\\2/g;s/_i_/_/g;s/\\.[1-9]:/:/g' "${bootstrap}.clean"
   """
 }
