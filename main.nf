@@ -77,10 +77,6 @@ process aleObserve{
   file "${bootstrap_clean}.ale" into aleObserved
 
   publishDir params.output_samples, mode: 'copy'
-  validExitStatus 0,1
-  container 'ALE.img'
-  errorStrategy 'retry'
-  maxRetries 5
   tag {"${bootstrap_clean.simpleName}"}
 
   script:
@@ -102,10 +98,6 @@ process aleMlUndated{
   set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
-  container 'ALE.img'
-  stageInMode 'copy'
-  errorStrategy 'retry'
-  maxRetries 5
   tag {"${ale.simpleName}"}
 
   script:
