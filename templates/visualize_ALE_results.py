@@ -37,7 +37,7 @@ def simple_tree_style():
 def add_genome_size(treeO, treeC, species_map, events, filename):
     def scale(x):
         return int((x / 200)) * 2
-    events.to_csv(filename.replace('pdf', 'csv'), sep='\t')
+    events.to_csv(filename.replace('pdf', 'csv'), sep='\\t')
     for n in treeO.traverse():
         name = ''
         if n.is_leaf():
