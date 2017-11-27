@@ -5,7 +5,11 @@ import ete3
 from ETE3_styles import node_style_basic
 from ETE3_Utils import get_ancestor, set_node_style
 from numpy import log
+from xvfbwrapper import Xvfb
+import os
 
+vdisplay = Xvfb()
+vdisplay.start()
 
 def layout(node):
     if node.is_leaf():
@@ -83,3 +87,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # explicitly kill the xvfb display, because vdisplay.stop() is not working as expected
+    os.system('(sleep 5 && kill -9 %d) &' % vdisplay.proc.pid)
