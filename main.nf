@@ -93,7 +93,7 @@ process aleMlUndated{
   file fraction_missing from fraction_missing.first()
 
   output:
-  set val("${species_tree.baseName}"), file("${ale}.ucons_tree") into uconsTrees
+  set val("${species_tree.baseName}"), file("${ale}.ucons_tree") into uconsTrees optional true
   set val("${species_tree.baseName}"), file("${ale}.uml_rec") into umlReconsiliation
   set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers
 
