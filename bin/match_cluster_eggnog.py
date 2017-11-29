@@ -3,6 +3,7 @@
 import numpy as np
 import argparse
 from ALE_parsing import *
+import sys
 
 parser = argparse.ArgumentParser()
 
@@ -36,8 +37,11 @@ def main(args):
 
     name2cluster = {}
     for f in args.faas:
-        c = Cluster(f, annotation)
-        name2cluster[c.name] = c
+        try:
+            c = Cluster(f, annotation)
+            name2cluster[c.name] = c
+        except KeyError:
+            print("could not find ALE results for cluster {}".format(f), file=sys.stderr)
 
     events = Events(args.events, args.species_tree)
 
