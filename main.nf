@@ -33,7 +33,12 @@ bootstrap = Channel.fromPath("$params.input_files/*$params.input_extension")
 Channel.fromPath(params.species_tree_files).into { species_tree; species_tree_single_cluster }
 Channel.from(file(params.genes_map)).into { genes_map; genes_map_single_clusters }
 Channel.from(file(params.species_map)).into { species_map; species_map_copy }
-single_cluster =  Channel.fromPath(params.single_cluster)
+
+if (params.single_cluster) {
+    single_cluster =  Channel.fromPath(params.single_cluster)
+}else {
+    single_cluster = Channel.empty()
+}
 
 process cleanSpeciesTree{
   input:
