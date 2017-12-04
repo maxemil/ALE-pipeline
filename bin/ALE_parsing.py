@@ -5,13 +5,21 @@ from collections import defaultdict, OrderedDict
 import sys
 
 class Annotation:
-    def __init__(self, annotation_files):
+    def __init__(self, annotation_files, cog_annotation):
+        self.cog_annotation = {}
         self.annotation_files = annotation_files
         self.id2cat = {}
         self.id2cog = {}
         self.cog2cat = {}
         self.cog2desc = {}
         self.parse_eggnog_annotations()
+        self.parse_cog_annotation(cog_annotation)
+
+    def parse_cog_annotation(self, cog_file):
+        for line in open(cog_file):
+            if not line.startswith('#'):
+                line = line.strip().split()
+                self.cog_annotation[line[0]] = line[2]
 
     def parse_eggnog_annotations(self):
         for ann in self.annotation_files:
@@ -20,7 +28,10 @@ class Annotation:
                     if not line.startswith('#'):
                         line = line.split('\t')
                         cog = line[9].split('|')[0]
-                        desc = line[11].strip()
+                        try:
+                            desc = self.cog_annotation[cog]
+                        except:
+                            desc = line[11].strip()
                         seq_id = line[0]
                         cat = line[10].split(', ')
                         self.cog2desc[cog] = desc
@@ -39,7 +50,7 @@ class Cluster:
 
     def get_cog_members(self):
         for rec in SeqIO.parse(self.faa, 'fasta'):
-            gene = rec.id.split('_i_')[1]
+            gene = rec.id#.split('_i_')[1]
             try:
                 self.cog_members[self.annotation.id2cog[gene]] += 1
             except:
@@ -96,11 +107,11 @@ class Node:
         gains_df = pd.DataFrame(columns=self.raw_members.columns)
         losses_df = pd.DataFrame(columns=self.raw_members.columns)
         for clst in self.raw_members['clst']:
-            if (self.raw_members[self.raw_members['clst'] == clst]['copies'] < 0.5).item() and \
-            (descendant.raw_members[descendant.raw_members['clst'] == clst]['copies'] >= 0.5).item():
+            if (self.raw_members[self.raw_members['clst'] == clst]['copies'] < 0.5).tolist()[0] and \
+            (descendant.raw_members[descendant.raw_members['clst'] == clst]['copies'] >= 0.5).tolist()[0]:
                 gains_df = gains_df.append(descendant.raw_members[descendant.raw_members['clst'] == clst])
-            elif (self.raw_members[self.raw_members['clst'] == clst]['copies'] >= 0.5).item() and \
-            (descendant.raw_members[descendant.raw_members['clst'] == clst]['copies'] < 0.5).item():
+            elif (self.raw_members[self.raw_members['clst'] == clst]['copies'] >= 0.5).tolist()[0] and \
+            (descendant.raw_members[descendant.raw_members['clst'] == clst]['copies'] < 0.5).tolist()[0]:
                 losses_df = losses_df.append(descendant.raw_members[descendant.raw_members['clst'] == clst])
         return self.print_gains(gains_df), self.print_losses(losses_df)
 

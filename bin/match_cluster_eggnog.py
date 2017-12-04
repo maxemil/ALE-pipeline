@@ -11,6 +11,8 @@ parser.add_argument("-f", "--faas", required=True, nargs='+',
                     help="cluster .faas that are to be annotated")
 parser.add_argument("-a", "--annotations", required=True, nargs='+',
                     help="annotated .faas that are used as a source for annotation")
+parser.add_argument("-c", "--cog_annotation", required=True,
+                    help="cognames, the official cog annotations")
 parser.add_argument("-co", "--cluster_out", required=False, default='cluster_OG.tab',
                     help="output table containing all annotations of all clusters, default 'cluster_OG.tab'")
 parser.add_argument("-n", "--ancestor_nodes", required=False, nargs='+', default=[],
@@ -33,7 +35,7 @@ def main(args):
         print('either -n or -np has to be given')
         sys.exit()
 
-    annotation = Annotation(args.annotations)
+    annotation = Annotation(args.annotations, args.cog_annotation)
 
     name2cluster = {}
     for f in args.faas:
