@@ -155,9 +155,10 @@ class Node:
                 gain_type = "origination"
             else:
                 gain_type = "-"
+            clst = line[1]['clst']
             best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
             cogs, counts, cats, descs = self.get_all_cog_info(clst)
-            lines.append(to_tsv(line[1]['clst'],
+            lines.append(to_tsv(clst,
                                 gain_type,
                                 best_cog,
                                 best_cog_cat,
@@ -171,9 +172,10 @@ class Node:
         lines = []
         lines.append(to_tsv("cluster", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "NOG cat", "NOGs", "NOG_description"))
         for line in losses_df.iterrows():
+            clst = line[1]['clst']
             best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
             cogs, counts, cats, descs = self.get_all_cog_info(clst)
-            lines.append(to_tsv(line[1]['clst'],
+            lines.append(to_tsv(clst,
                                 best_cog,
                                 best_cog_cat,
                                 best_cog_desc,
