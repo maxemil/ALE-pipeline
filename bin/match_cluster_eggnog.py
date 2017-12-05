@@ -11,7 +11,7 @@ parser.add_argument("-f", "--faas", required=True, nargs='+',
                     help="cluster .faas that are to be annotated")
 parser.add_argument("-a", "--annotations", required=True, nargs='+',
                     help="annotated .faas that are used as a source for annotation")
-parser.add_argument("-c", "--cog_annotation", required=True,
+parser.add_argument("-c", "--cog_annotation", required=True, type=str,
                     help="cognames, the official cog annotations")
 parser.add_argument("-co", "--cluster_out", required=False, default='cluster_OG.tab',
                     help="output table containing all annotations of all clusters, default 'cluster_OG.tab'")
