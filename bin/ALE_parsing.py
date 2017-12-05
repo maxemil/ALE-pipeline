@@ -17,10 +17,10 @@ class Annotation:
     def __init__(self, annotation_files, cog_annotation):
         self.cog_annotation = {}
         self.annotation_files = annotation_files
-        self.id2cat = defaultdict(str)
-        self.id2cog = defaultdict(str)
-        self.cog2cat = defaultdict(str)
-        self.cog2desc = defaultdict(str)
+        self.id2cat = defaultdict(lambda: "-")
+        self.id2cog = defaultdict(lambda: "-")
+        self.cog2cat = defaultdict(lambda: "-")
+        self.cog2desc = defaultdict(lambda: "-")
         self.parse_cog_annotation(cog_annotation)
         self.parse_eggnog_annotations()
 
