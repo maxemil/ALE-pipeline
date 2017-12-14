@@ -16,6 +16,14 @@ hifix -t 20 -n 150 $prefix.$FASTA $prefix.net $prefix.fnodes > $prefix.HFX.fnode
   * a (correct as it can be) species tree
   * A sample of trees for a gene cluster (e.g. a bootstrap sample or mcmc sampled trees) in one file, one tree per line
 
+### Install nextflow and singularity
+* install nextflow (the pipeline language)
+  * curl -s https://get.nextflow.io | bash
+* install singularity (to use ALE in a container, so no need to install it)
+  * http://singularity.lbl.gov/install-linux
+* build the ALE container
+  * `sudo singularity build ALE.img Singularity`
+
 ### Running ALE
 * Running ALE is then simplified with the nextflow pipeline (executed for all clusters at once)
 
