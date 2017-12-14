@@ -34,7 +34,33 @@ nextflow run ALE-pipeline/main.nf --species_tree_files "prefix*.tree" \
 * The pipeline will output a file 'events.txt' with the inferred ODTL events
 * you can also include small clusters (<4 members) to get more correct numbers for each leaf (and with that for internal nodes as well).
 
+#### small test for the pipeline
+* you can run a test with the files in `tests`, so by doing the below command you should get the directories `species_trees` with the rooted species trees and pdfs, the `ufboots` directory with the ALE objects and the `ALE_results` with the main `ALEml_undated` output.
+  ```
+  # run test:
+  nextflow run main.nf --species_tree tests/species_tree_test.new \
+                       --input_files tests\
+                       --input_extension '.ufboot' \
+                       --genes_map tests/map_genes.txt \
+                       --species_map tests/map_species.txt \
+                       --outgroup_taxa '["BIN125-1"]'
+
+  # clean up:
+  rm -r work ALE_results species_trees ufboots .nextflow*
+  ```
+
 ### interpreting ALE results
 * with the nextflow pipeline, there is a script to extract events for certain nodes
 * include EGGnog/COG annotations to have an idea of what the clusters are doing
 * you can also get numbers for gains losses when looking at pairs of nodes
+
+```
+python3 bin/match_cluster_eggnog.py --faas clusters/*.faa \
+                                  --annotations Emapper_annotations.tsv \
+                                  --species_tree species_tree_name \
+                                  --events events.txt \
+                                  --ancestor_nodes 100 99 98 97
+                                  --node_pairs 100 99 100 98 99 97 \
+                                  --cog_annotation cognames2003-2014.tab \
+                                  --threshold 0.5
+```                               
