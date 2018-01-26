@@ -16,6 +16,7 @@ def startup_message() {
     log.info "Extension of GT samples        : $params.input_extension"
     log.info "Outgroup taxa use to root ST   : $params.outgroup_taxa"
     log.info "Fraction of missing genes      : $params.fraction_missing"
+    log.info "Fasta files of clusters < 4    : $params.small_cluster"
     log.info "Python 3 binary used           : $params.python3"
     log.info ""
     log.info "Currently looks for separator $params.separator between species and genes"
@@ -29,15 +30,60 @@ startup_message()
 
 //bootstrap = Channel.from(file(params.input))
 fraction_missing = create_channel_fraction_missing()
-bootstrap = Channel.fromPath("$params.input_files/*$params.input_extension")
+regular_bootstrap = Channel.fromPath("$params.input_files/*$params.input_extension")
 Channel.fromPath(params.species_tree_files).into { species_tree; species_tree_single_cluster }
 Channel.from(file(params.genes_map)).into { genes_map; genes_map_single_clusters }
 Channel.from(file(params.species_map)).into { species_map; species_map_copy }
 
-if (params.single_cluster) {
-    single_cluster =  Channel.fromPath(params.single_cluster)
+if (params.small_cluster) {
+    small_clusters = Channel.fromPath("$params.small_cluster")
 }else {
-    single_cluster = Channel.empty()
+    small_cluster = Channel.empty()
+}
+
+process smallClusters{
+  input:
+  file fasta from small_clusters
+
+  output:
+  file "${fasta.simpleName}.small.faa" into small_faa optional true
+  file "${fasta.simpleName}.single.faa" into single_faa optional true
+
+  tag {"${fasta.simpleName}"}
+
+  script:
+  """
+  if [ "\$(grep -c '^>' $fasta)" -lt 4 ] && [ "\$(grep -c '^>' $fasta)" -gt 1 ]
+  then
+    mv $fasta ${fasta.simpleName}.small.faa
+  elif [ "\$(grep -c '^>' $fasta)" -eq 1 ]
+  then
+      mv $fasta ${fasta.simpleName}.single.faa
+  fi
+  """
+}
+
+
+process smallClustersBootstrap{
+  input:
+  file fasta from small_faa
+
+  output:
+  file "${fasta.simpleName}.clean" into small_bootstraps
+
+  script:
+  """
+  #! ${params.python3}
+
+  from Bio import SeqIO
+  with open("${fasta.simpleName}.clean", 'w') as outhandle:
+    rec_ids = [rec.id for rec in SeqIO.parse("$fasta", 'fasta')]
+    if len(rec_ids) == 2:
+      newick = "({},{});".format(rec_ids[0], rec_ids[1])
+    else:
+      newick = "(({},{}),{});".format(rec_ids[0], rec_ids[1], rec_ids[2])
+    outhandle.write(newick)
+  """
 }
 
 process cleanSpeciesTree{
@@ -56,23 +102,26 @@ process cleanSpeciesTree{
   template 'cleanSpeciesTree.py'
 }
 
+bootstrap = regular_bootstrap.concat(small_bootstraps)
+
 process cleanNames{
   input:
   file bootstrap
   file 'map_genes.txt' from genes_map.first()
 
   output:
-  file "${bootstrap}.clean" into bootstrap_clean
+  file "${bootstrap.simpleName}.clean.ufboot" into bootstrap_clean
 
   tag {"${bootstrap.simpleName}"}
 
   script:
   """
-  cp $bootstrap "${bootstrap}.clean"
-  replace_names.py -i map_genes.txt -f "${bootstrap}.clean"
-  sed -r -i 's/([^_i])_([^i_])/\\1\\2/g;s/$params.separator/_/g;s/\\.[1-9]:/:/g' "${bootstrap}.clean"
+  cp $bootstrap "${bootstrap.simpleName}.clean.ufboot"
+  replace_names.py -i map_genes.txt -f "${bootstrap.simpleName}.clean.ufboot"
+  sed -r -i 's/([^_i])_([^i_])/\\1\\2/g;s/$params.separator/_/g;s/\\.[1-9]:/:/g' "${bootstrap.simpleName}.clean.ufboot"
   """
 }
+
 
 process aleObserve{
   input:
@@ -133,7 +182,7 @@ process extractDTLEvents{
 
 process includeSingleClusters {
   input:
-  file fasta from single_cluster
+  file fasta from single_faa
   file 'map_genes.txt' from genes_map_single_clusters.first()
   each species_tree from species_tree_single_cluster
 
