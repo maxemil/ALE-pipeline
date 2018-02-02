@@ -17,6 +17,7 @@ hifix -t 20 -n 150 $prefix.$FASTA $prefix.net $prefix.fnodes > $prefix.HFX.fnode
 * To run, ALE needs
   * a (correct as it can be) species tree
   * A sample of trees for a gene cluster (e.g. a bootstrap sample or mcmc sampled trees) in one file, one tree per line
+  * a mapping file of species names to a code that ALE can digest (there is a script for this called `create_name_codes.py` in the `bin` folder)
 
 ### Install nextflow and singularity
 * install nextflow (the pipeline language, apparently you need something > v0.24 )
@@ -37,7 +38,7 @@ nextflow run ALE-pipeline/main.nf --species_tree_files "prefix*.tree" \
                                   --fraction_missing fractionMissingGenes.txt \
                                   --genes_map map_genes.txt \
                                   --species_map map_species.txt \
-                                  --single_cluster single_cluster_faas/* \
+                                  --single_cluster 'single_cluster_faas/*' \
                                   --output_ale output_dir
                                   --separator "_i_"
 ```
@@ -47,6 +48,8 @@ nextflow run ALE-pipeline/main.nf --species_tree_files "prefix*.tree" \
 #### small test for the pipeline
 * you can run a test with the files in `tests`, so by doing the below command you should get the directories `species_trees` with the rooted species trees and pdfs, the `ufboots` directory with the ALE objects and the `ALE_results` with the main `ALEml_undated` output.
   ```
+  # pull the necessary singularity container
+  singularity pull --name ALE.simg shub://maxemil/ALE-pipeline
   # run test:
   nextflow run main.nf --small_cluster 'tests/single_cluster/*' \
                        --input_files tests/ufboots \
