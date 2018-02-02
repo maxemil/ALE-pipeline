@@ -2,6 +2,8 @@
 ### Clustering of proteins
 * prepare db of all Proteomes
 * blast all vs. all to get pairwise hits
+  * default values for coverage and e-value cutoffs, as silix can handle them
+  * increase the max number of hits to fit your dataset
 * use clustering tools such as
   * mcl or
   * silix/hifix to get clusters/OGs
@@ -17,7 +19,7 @@ hifix -t 20 -n 150 $prefix.$FASTA $prefix.net $prefix.fnodes > $prefix.HFX.fnode
   * A sample of trees for a gene cluster (e.g. a bootstrap sample or mcmc sampled trees) in one file, one tree per line
 
 ### Install nextflow and singularity
-* install nextflow (the pipeline language)
+* install nextflow (the pipeline language, apparently you need something > v0.24 )
   * curl -s https://get.nextflow.io | bash
 * install singularity (to use ALE in a container, so no need to install it)
   * http://singularity.lbl.gov/install-linux
@@ -46,13 +48,13 @@ nextflow run ALE-pipeline/main.nf --species_tree_files "prefix*.tree" \
 * you can run a test with the files in `tests`, so by doing the below command you should get the directories `species_trees` with the rooted species trees and pdfs, the `ufboots` directory with the ALE objects and the `ALE_results` with the main `ALEml_undated` output.
   ```
   # run test:
-  nextflow run main.nf --species_tree tests/species_tree_test.new \
-                       --input_files tests\
-                       --input_extension '.ufboot' \
-                       --genes_map tests/map_genes.txt \
+  nextflow run main.nf --small_cluster 'tests/single_cluster/*' \
+                       --input_files tests/ufboots \
+                       --genes_map tests/map_genes.txt -\
                        --species_map tests/map_species.txt \
-                       --outgroup_taxa '["BIN125-1"]'
-
+                       --outgroup_taxa '["Bin_49","Bin_84"]' \
+                       --species_tree_files tests/species.tree
+                       
   # clean up:
   rm -r work ALE_results species_trees ufboots .nextflow*
   ```
