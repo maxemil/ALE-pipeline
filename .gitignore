@@ -5,3 +5,4 @@ species_trees/
 work/
 *.pdf
 Alphaproteo*
+*.pyc
