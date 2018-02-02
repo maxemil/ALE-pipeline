@@ -50,11 +50,11 @@ nextflow run ALE-pipeline/main.nf --species_tree_files "prefix*.tree" \
   # run test:
   nextflow run main.nf --small_cluster 'tests/single_cluster/*' \
                        --input_files tests/ufboots \
-                       --genes_map tests/map_genes.txt -\
+                       --genes_map tests/map_genes.txt \
                        --species_map tests/map_species.txt \
                        --outgroup_taxa '["Bin_49","Bin_84"]' \
-                       --species_tree_files tests/species.tree
-                       
+                       --species_tree_files tests/*tree
+
   # clean up:
   rm -r work ALE_results species_trees ufboots .nextflow*
   ```
