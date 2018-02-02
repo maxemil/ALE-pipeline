@@ -36,12 +36,12 @@ Channel.from(file(params.genes_map)).into { genes_map; genes_map_single_clusters
 Channel.from(file(params.species_map)).into { species_map; species_map_copy }
 
 if (params.small_cluster) {
-    small_clusters = Channel.fromPath("$params.small_cluster")
+    small_clusters = Channel.fromPath(params.small_cluster)
 }else {
-    small_cluster = Channel.empty()
+    small_clusters = Channel.empty()
 }
 
-process smallClusters{
+process smallClusters {
   input:
   file fasta from small_clusters
 
@@ -63,8 +63,7 @@ process smallClusters{
   """
 }
 
-
-process smallClustersBootstrap{
+process smallClustersBootstrap {
   input:
   file fasta from small_faa
 
@@ -86,7 +85,7 @@ process smallClustersBootstrap{
   """
 }
 
-process cleanSpeciesTree{
+process cleanSpeciesTree {
   input:
   file species_tree
   file 'map_species.txt' from species_map.first()
@@ -104,7 +103,7 @@ process cleanSpeciesTree{
 
 bootstrap = regular_bootstrap.concat(small_bootstraps)
 
-process cleanNames{
+process cleanNames {
   input:
   file bootstrap
   file 'map_genes.txt' from genes_map.first()
@@ -122,8 +121,7 @@ process cleanNames{
   """
 }
 
-
-process aleObserve{
+process aleObserve {
   input:
   file bootstrap_clean
 
@@ -141,7 +139,7 @@ process aleObserve{
 
 species_tree_vs_ale = clean_species_tree.combine(aleObserved)
 
-process aleMlUndated{
+process aleMlUndated {
   input:
   set file(species_tree), file(ale) from species_tree_vs_ale
   file fraction_missing from fraction_missing.first()
@@ -166,7 +164,7 @@ process aleMlUndated{
   }
 }
 
-process extractDTLEvents{
+process extractDTLEvents {
   input:
   set val(species_tree), file(gene) from umlReconsiliation
 
@@ -201,7 +199,7 @@ process includeSingleClusters {
 
 all_events = events.concat(single_cluster_events).collectFile(name: 'events.txt', storeDir: params.output_ale)
 
-process summmarizeDTLEvents{
+process summmarizeDTLEvents {
   input:
   file all_events
   file species_map from species_map_copy.first()
