@@ -1,5 +1,7 @@
 #! ${params.python3}
 
+import shutil
+
 def replace(string, patterns):
     for p in patterns:
         string = string.replace(p[0], p[1])
