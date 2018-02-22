@@ -133,7 +133,7 @@ process aleObserve {
 
   script:
   """
-  ALEobserve \$PWD/$bootstrap_clean
+  ALEobserve $bootstrap_clean
   """
 }
 
@@ -155,11 +155,11 @@ process aleMlUndated {
   script:
   if (fraction_missing ==~ /.*tmp/){
       """
-      ALEml_undated \$PWD/$species_tree \$PWD/$ale
+      ALEml_undated $species_tree $ale
       """
   } else {
       """
-      ALEml_undated \$PWD/$species_tree \$PWD/$ale fraction_missing=\$PWD/$fraction_missing
+      ALEml_undated $species_tree $ale fraction_missing=$fraction_missing
       """
   }
 }
