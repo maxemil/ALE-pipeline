@@ -114,11 +114,7 @@ process cleanNames {
   tag {"${bootstrap.simpleName}"}
 
   script:
-  """
-  cp $bootstrap "${bootstrap.simpleName}.clean.ufboot"
-  replace_names.py -i map_genes.txt -f "${bootstrap.simpleName}.clean.ufboot"
-  sed -r -i 's/([^_i])_([^i_])/\\1\\2/g;s/$params.separator/_/g;s/\\.[1-9]:/:/g' "${bootstrap.simpleName}.clean.ufboot"
-  """
+  template 'replace_names_tree.py'
 }
 
 process aleObserve {
