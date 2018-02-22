@@ -20,7 +20,7 @@ content = replace(content, patterns)
 
 content = content.replace("_","")
 content = content.replace("-","")
-content = content.replace("..","_")
+content = content.replace("$params.separator","_")
 
 with open(replacementfile, 'w') as outhandle:
     outhandle.write(content)
