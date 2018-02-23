@@ -151,11 +151,25 @@ process aleMlUndated {
   script:
   if (fraction_missing ==~ /.*tmp/){
       """
-      ALEml_undated $species_tree $ale
+      ALEml_undated $species_tree $ale || exitcode=$?
+      if [ $exitcode -eq 134 -a -s ${ale}.uml_rec ]
+        then
+          echo "error, but output file present"
+          exit $exitcode
+        else
+          exit $exitcode
+      fi
       """
   } else {
       """
-      ALEml_undated $species_tree $ale fraction_missing=$fraction_missing
+      ALEml_undated $species_tree $ale fraction_missing=$fraction_missing || exitcode=$?
+      if [ $exitcode -eq 134 -a -s ${ale}.uml_rec ]
+        then
+          echo "error, but output file present"
+          exit $exitcode
+        else
+          exit $exitcode
+      fi
       """
   }
 }
