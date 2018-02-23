@@ -151,6 +151,7 @@ process aleMlUndated {
   script:
   if (fraction_missing ==~ /.*tmp/){
       """
+      exitcode=0
       ALEml_undated $species_tree $ale || exitcode=\$?
       if [ \$exitcode -eq 134 -a -s ${ale}.uml_rec ]
         then
@@ -162,6 +163,7 @@ process aleMlUndated {
       """
   } else {
       """
+      exitcode=0
       ALEml_undated $species_tree $ale fraction_missing=$fraction_missing || exitcode=\$?
       if [ \$exitcode -eq 134 -a -s ${ale}.uml_rec ]
         then
