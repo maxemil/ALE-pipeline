@@ -143,7 +143,7 @@ process aleMlUndated {
   output:
   set val("${species_tree.baseName}"), file("${ale}.ucons_tree") into uconsTrees optional true
   set val("${species_tree.baseName}"), file("${ale}.uml_rec") into umlReconsiliation
-  set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers
+  set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers optional true
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
   tag {"${ale.simpleName}"}
@@ -156,7 +156,7 @@ process aleMlUndated {
       if [ \$exitcode -eq 134 -a -s ${ale}.uml_rec ]
         then
           echo "error, but output file present"
-          exit \$exitcode
+          exit 0
         else
           exit \$exitcode
       fi
