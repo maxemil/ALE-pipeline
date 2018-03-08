@@ -4,10 +4,11 @@ import numpy as np
 import argparse
 from ALE_parsing import *
 import sys
+import glob
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-f", "--faas", required=True, nargs='+',
+parser.add_argument("-f", "--faas", required=True,
                     help="cluster .faas that are to be annotated")
 parser.add_argument("-a", "--annotations", required=True, nargs='+',
                     help="annotated .faas that are used as a source for annotation")
@@ -38,7 +39,7 @@ def main(args):
     annotation = Annotation(args.annotations, args.cog_annotation)
 
     name2cluster = {}
-    for f in args.faas:
+    for f in glob.glob(args.faas + "/*"):
         try:
             c = Cluster(f, annotation)
             name2cluster[c.name] = c
