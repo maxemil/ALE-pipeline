@@ -146,7 +146,7 @@ process aleMlUndated {
   set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers optional true
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
-  tag {"${ale.simpleName}"}
+  tag {"${species_tree.baseName} - ${ale.simpleName}"}
 
   script:
   if (fraction_missing ==~ /.*tmp/){
@@ -183,7 +183,7 @@ process extractDTLEvents {
   output:
   file "events.txt" into events
 
-  tag {"${gene.simpleName}"}
+  tag {"$species_tree - ${gene.simpleName}"}
   // publishDir "${params.output_ale}/${species_tree}", mode: 'copy'
 
   script:
@@ -199,13 +199,16 @@ process includeSingleClusters {
   output:
   file "events.txt" into single_cluster_events
 
-  tag {"${fasta.simpleName}"}
+  tag {"${species_tree.baseName} - ${fasta.simpleName}"}
 
   script:
   """
-  cp $fasta ${fasta}.clean
-  replace_names.py -i map_genes.txt -f ${fasta}.clean
-  grep '>' ${fasta}.clean | cut -d '>' -f 2 | awk -F '$params.separator' '{print "${species_tree.baseName}_clean\\t$fasta.simpleName\\t"\$1"\\t0\\t0\\t0\\t0\\t1"}' > events.txt
+  #! ${params.python3}
+  header = open('$fasta').readline().strip().replace('>','')
+  name_map = {line.split('\t')[0]:line.split('\t')[1].strip() for line in open('map_genes.txt')}
+  clean_id = name_map[header.split('$params.separator')[0]]
+  with open('events.txt', 'w') as outfile:
+      print("\t".join(['${species_tree.baseName}_clean', '${fasta.simpleName}', clean_id, '0', '0', '0', '0', '1']), file=outfile)
   """
 }
 
