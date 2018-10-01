@@ -132,27 +132,88 @@ process aleObserve {
   ALEobserve $bootstrap_clean
   """
 }
+aleObserved.into{aleObserved_species_tree; aleObserved_mpi}
+clean_species_tree.into{clean_species_tree_combine; clean_species_tree_mpi}
+clean_species_tree_combine.combine(aleObserved_species_tree).into{species_tree_vs_ale_times; species_tree_vs_ale_undated}
 
-species_tree_vs_ale = clean_species_tree.combine(aleObserved)
+process timesUndated {
+  input:
+  set file(species_tree), file(ale) from species_tree_vs_ale_times
+
+  output:
+  file "${ale}.utimes" into utimes
+  publishDir params.output_samples, mode: 'copy'
+
+  tag {"${ale.simpleName}"}
+  container 'ALE.simg'
+
+  script:
+  """
+  times_undated $species_tree $ale
+  """
+}
+
+utimes_concat = utimes.collectFile(name: 'ale_utimes.txt', storeDir: params.output_ale)
+
+
+process distributeALE {
+  input:
+  file utimes from utimes_concat
+
+  output:
+  file "${utimes}.all.${task.cpus}cpus" into distributed_ale_list
+
+  container 'ALE.simg'
+  cpus 30
+
+  script:
+  """
+  python /usr/local/ALE/misc/distribute.py $utimes $task.cpus
+  """
+
+}
+
+process MpiALE {
+  input:
+  file ale_cpus from distributed_ale_list
+  file "*" from aleObserved_mpi.collect()
+  file species_tree from clean_species_tree_mpi
+
+  output:
+  file "ale_utimes.log" into ale_utimes_log
+  stdout rates
+
+  container 'ALE.simg'
+  cpus 30
+
+  script:
+  """
+  mpirun -n $task.cpus mpi_ml_undated $species_tree $ale_cpus > ale_utimes.log
+  grep rates ale_utimes.log | cut -d ':' -f 2
+  """
+}
+// rates.subscribe{print it}
+
 
 process aleMlUndated {
   input:
-  set file(species_tree), file(ale) from species_tree_vs_ale
+  set file(species_tree), file(ale) from species_tree_vs_ale_undated
   file fraction_missing from fraction_missing.first()
+  val rates from rates.first()
 
   output:
   set val("${species_tree.baseName}"), file("${ale}.ucons_tree") into uconsTrees optional true
   set val("${species_tree.baseName}"), file("${ale}.uml_rec") into umlReconsiliation
   set val("${species_tree.baseName}"), file("${ale}.uTs") into uTransfers optional true
+  set val("${ale.simpleName}"), stdout into mlundated_error
 
   publishDir "${params.output_ale}/${species_tree.baseName}", mode: 'copy'
   tag {"${species_tree.baseName} - ${ale.simpleName}"}
 
   script:
-  if (fraction_missing ==~ /.*tmp/){
       """
       exitcode=0
-      ALEml_undated $species_tree $ale || exitcode=\$?
+      ALEml_undated $species_tree $ale fraction_missing=$fraction_missing \$(cat rates | tr -d '\\n') || exitcode=\$?
       if [ \$exitcode -eq 134 -a -s ${ale}.uml_rec ]
         then
           echo "error, but output file present"
@@ -161,20 +222,8 @@ process aleMlUndated {
           exit \$exitcode
       fi
       """
-  } else {
-      """
-      exitcode=0
-      ALEml_undated $species_tree $ale fraction_missing=$fraction_missing || exitcode=\$?
-      if [ \$exitcode -eq 134 -a -s ${ale}.uml_rec ]
-        then
-          echo "error, but output file present"
-          exit 0
-        else
-          exit \$exitcode
-      fi
-      """
-  }
 }
+mlundated_error.subscribe{base, stdout -> if(stdout.contains("error, but output file present")){println "$base finished with an error"}}
 
 process extractDTLEvents {
   input:
