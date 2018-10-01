@@ -15,4 +15,6 @@ tree.convert_to_ultrametric()
 species_map = {line.split()[0]: line.split()[1] for line in open('map_species.txt')}
 for leaf in tree.get_leaves():
     leaf.name = species_map[leaf.name]
-print(tree.write(), file=open("${species_tree.baseName}_clean.tree", 'w'))
+
+with open("${species_tree.baseName}_clean.tree", 'w') as outhandle:
+    print(tree.write(), file=outhandle)

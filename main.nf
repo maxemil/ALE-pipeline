@@ -168,7 +168,7 @@ process aleMlUndated {
       if [ \$exitcode -eq 134 -a -s ${ale}.uml_rec ]
         then
           echo "error, but output file present"
-          exit \$exitcode
+          exit 0
         else
           exit \$exitcode
       fi
@@ -228,7 +228,7 @@ process summmarizeDTLEvents {
 
   script:
   template 'visualize_ALE_results.py'
-  }
+}
 
 
 def create_channel_fraction_missing() {
