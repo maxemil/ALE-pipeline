@@ -12,6 +12,12 @@ def to_tsv(*args):
 def to_ssv(*args):
     return("; ".join(args))
 
+def parse_tree_certainty(infile):
+    name2tree_certainty = defaultdict(lambda: "-")
+    for line in open(infile):
+        line = line.strip().split()
+        name2tree_certainty[line[0]] = line[1]
+    return name2tree_certainty
 
 class Annotation:
     def __init__(self, annotation_files, cog_annotation):
@@ -84,16 +90,17 @@ class Events:
 
 
 class Node:
-    def __init__(self, name, annotation, events, name2cluster, threshold):
+    def __init__(self, name, annotation, events, name2cluster, name2tree_certainty, threshold):
         self.name = name
         self.annotation = annotation
         self.events = events
         self.name2cluster = name2cluster
+        self.name2tree_certainty = name2tree_certainty
         self.raw_members = events.events[events.events['node'] == self.name]
         self.members = self.raw_members[self.raw_members["copies"] > threshold]
         self.members['clst'] = self.members.apply(lambda row: row['cluster'].split('.')[0], axis=1)
         self.raw_members['clst'] = self.raw_members.apply(lambda row: row['cluster'].split('.')[0], axis=1)
-        self.header = ["cluster", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "duplications",
+        self.header = ["cluster", "TreeCertainty", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "duplications",
                                  "transfers", "losses", "originations", "copies", "NOG", '#NOG_annotations',
                                  "NOG_category", "NOG_description"]
 
@@ -115,11 +122,13 @@ class Node:
         lines.append(to_tsv(*self.header))
         for line in self.members.iterrows():
             clst = line[1]['clst']
+            tc = self.name2tree_certainty[clst]
             best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
             events = [str(i) for i in line[1][['duplications','transfers', 'losses', 'originations', 'copies']]]
             cogs, counts, cats, descs = self.get_all_cog_info(clst)
             clst_line = to_tsv(
                         clst,
+                        tc,
                         best_cog,
                         best_cog_cat,
                         best_cog_desc,
@@ -145,7 +154,7 @@ class Node:
 
     def print_gains(self, gains_df):
         lines = []
-        lines.append(to_tsv("cluster", "type of gain", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "NOG cat", "NOGs", "NOG_description"))
+        lines.append(to_tsv("cluster", "TreeCertainty", "type of gain", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "NOG cat", "NOGs", "NOG_description"))
         for line in gains_df.iterrows():
             if line[1]['transfers'] >= 0.5 and line[1]['originations'] >= 0.5:
                 gain_type = "transfer/origination"
@@ -156,9 +165,11 @@ class Node:
             else:
                 gain_type = "-"
             clst = line[1]['clst']
+            tc = self.name2tree_certainty[clst]
             best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
             cogs, counts, cats, descs = self.get_all_cog_info(clst)
             lines.append(to_tsv(clst,
+                                tc,
                                 gain_type,
                                 best_cog,
                                 best_cog_cat,
@@ -170,12 +181,14 @@ class Node:
 
     def print_losses(self, losses_df):
         lines = []
-        lines.append(to_tsv("cluster", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "NOG cat", "NOGs", "NOG_description"))
+        lines.append(to_tsv("cluster", "TreeCertainty", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "NOG cat", "NOGs", "NOG_description"))
         for line in losses_df.iterrows():
             clst = line[1]['clst']
+            tc = self.name2tree_certainty[clst]
             best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
             cogs, counts, cats, descs = self.get_all_cog_info(clst)
             lines.append(to_tsv(clst,
+                                tc,
                                 best_cog,
                                 best_cog_cat,
                                 best_cog_desc,

@@ -22,6 +22,8 @@ parser.add_argument("-s", "--species_tree", required=True,
                     help="name of the species tree in 'events.txt'")
 parser.add_argument("-e", "--events", required=False, default="events.txt",
                     help="name of the events file, default 'events.txt'")
+parser.add_argument("-t", "--tree_certainty", required=True,
+                    help="name of the tree_certainty file")
 parser.add_argument("-th", "--threshold", required=False, default=0.5, type=float,
                     help="threshold for considering a gene cluster to be present, default 0.5")
 parser.add_argument("-np", "--node_pairs", required=False, nargs='+', default=[],
@@ -35,7 +37,8 @@ def main(args):
     if not args.ancestor_nodes and not args.node_pairs:
         print('either -n or -np has to be given')
         sys.exit()
-
+    print (args)
+    sys.exit()
     annotation = Annotation(args.annotations, args.cog_annotation)
 
     name2cluster = {}
@@ -46,11 +49,16 @@ def main(args):
         except KeyError:
             print("could not find ALE results for cluster {}".format(f), file=sys.stderr)
 
+    with open(args.cluster_out, 'w') as outhandle:
+        for c in name2cluster.values():
+            print(c, file=outhandle)
+
     events = Events(args.events, args.species_tree)
+    name2tree_certainty = parse_tree_certainty(args.tree_certainty)
 
     name2nodes = {}
     for node in set(args.ancestor_nodes + args.node_pairs):
-        n = Node(node, annotation, events, name2cluster, args.threshold)
+        n = Node(node, annotation, events, name2cluster, name2tree_certainty, args.threshold)
         name2nodes[n.name] = n
         with open("{}_cluster_OG.tab".format(n.name), 'w') as outhandle:
             print(n, file=outhandle)
