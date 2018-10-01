@@ -15,7 +15,7 @@ args = parser.parse_args()
 
 
 def get_code(name, verbosity=0):
-    name_parts = re.split('\.|_|:', name)
+    name_parts = re.split('\.|_|:|-', name)
     code_base = [s[0:2].upper() for s in name_parts[0:2]]
     code_add = []
     if verbosity > 0 and len(name_parts) > 2:
