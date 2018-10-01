@@ -37,8 +37,7 @@ def main(args):
     if not args.ancestor_nodes and not args.node_pairs:
         print('either -n or -np has to be given')
         sys.exit()
-    print (args)
-    sys.exit()
+
     annotation = Annotation(args.annotations, args.cog_annotation)
 
     name2cluster = {}
