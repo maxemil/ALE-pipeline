@@ -46,6 +46,10 @@ def main(args):
         except KeyError:
             print("could not find ALE results for cluster {}".format(f), file=sys.stderr)
 
+    with open(args.cluster_out, 'w') as outhandle:
+        for c in name2cluster.values():
+            print(c, file=outhandle)
+
     events = Events(args.events, args.species_tree)
 
     name2nodes = {}
