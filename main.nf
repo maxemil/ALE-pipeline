@@ -176,9 +176,29 @@ process aleMlUndated {
   }
 }
 
+umlReconsiliation.into{ umlReconsiliation_speciesTree; umlReconsiliation_events }
+
+umlReconsiliation_speciesTree_unique = umlReconsiliation_speciesTree.unique { it[0] }
+
+process extractSpeciesTree {
+  input:
+  set val(species_tree), file(gene) from umlReconsiliation_speciesTree_unique
+
+  output:
+  file "${species_tree}.tree" into species_tree_output
+
+  publishDir "${workflow.launchDir}/${params.output_trees}", mode: 'copy', overwrite: 'true'
+  tag {"${species_tree}"}
+
+  script:
+  """
+  grep '^S:' $gene | cut -f2 > ${species_tree}.tree
+  """
+}
+
 process extractDTLEvents {
   input:
-  set val(species_tree), file(gene) from umlReconsiliation
+  set val(species_tree), file(gene) from umlReconsiliation_events
 
   output:
   file "events.txt" into events
@@ -218,12 +238,12 @@ process summmarizeDTLEvents {
   input:
   file all_events
   file species_map from species_map_copy.first()
+  file species_trees from species_tree_output.collect()
 
   output:
   file "*.pdf" into tree_pdfs
   file "*.csv" into events_csv
 
-  beforeScript = "for d in \$(ls -d ${workflow.launchDir}/${params.output_ale}/*/); do grep '^S:' `ls \$d*uml_rec | shuf -n 1 | cat -` | cut -f2 > ${workflow.launchDir}/${params.output_trees}/\$(basename \$d).tree; done"
   publishDir "${params.output_trees}", mode: 'copy'
 
   script:
