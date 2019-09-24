@@ -1,3 +1,4 @@
+import ete3
 from Bio import SeqIO
 import pandas as pd
 import os
@@ -14,40 +15,29 @@ def to_ssv(*args):
 
 
 class Annotation:
-    def __init__(self, annotation_files, cog_annotation):
-        self.cog_annotation = {}
-        self.annotation_files = annotation_files
-        self.id2cat = defaultdict(lambda: "-")
-        self.id2cog = defaultdict(lambda: "-")
+    def __init__(self, cog_annotation, eggnog_annotation):
         self.cog2cat = defaultdict(lambda: "-")
         self.cog2desc = defaultdict(lambda: "-")
         self.parse_cog_annotation(cog_annotation)
-        self.parse_eggnog_annotations()
+        self.parse_eggnog_annotations(eggnog_annotation)
 
     def parse_cog_annotation(self, cog_file):
         with open(cog_file, 'rU', encoding='windows-1252') as cogfile:
             for line in cogfile:
                 if not line.startswith('#'):
                     line = line.strip().split('\t')
-                    self.cog_annotation[line[0]] = line[2]
+                    self.cog2cat[line[0]] = line[1]
+                    self.cog2desc[line[0]] = line[2]
 
-    def parse_eggnog_annotations(self):
-        for ann in self.annotation_files:
-            with open(ann) as handle:
-                for line in handle:
-                    if not line.startswith('#'):
-                        line = line.split('\t')
-                        cog = line[10].split('|')[0]
-                        try:
-                            desc = self.cog_annotation[cog]
-                        except:
-                            desc = line[12].strip()
-                        seq_id = line[0]
-                        cat = line[11].split(', ')
-                        self.cog2desc[cog] = desc
-                        self.cog2cat[cog] = ";".join(cat)
-                        self.id2cog[seq_id] = cog
-                        self.id2cat[seq_id] = cat
+
+    def parse_eggnog_annotations(self, eggnog_file):
+        with open(eggnog_file) as nogfile:
+            for line in nogfile:
+                if not line.startswith('#'):
+                    line = line.strip().split('\t')
+                    if not line[0] in self.cog2cat.keys():
+                        self.cog2desc[line[0]] = line[2]
+                        self.cog2cat[line[0]] = line[1]
 
 class Cluster:
     def __init__(self, faa, annotation):
@@ -87,100 +77,119 @@ def parse_events(events_file, species_tree):
     del events['node']
     return events
 
+
 class Node:
     def __init__(self, name, annotation, events, name2cluster, threshold):
         self.name = name
         self.annotation = annotation
+        self.threshold = threshold
         self.events = events
         self.name2cluster = name2cluster
-        self.raw_members = events.events.xs(self.name, level='node')
-        self.members = self.raw_members[self.raw_members["copies"] > threshold]
-        self.header = ["cluster", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "duplications",
-                                 "transfers", "losses", "originations", "copies", "NOG", '#NOG_annotations',
-                                 "NOG_category", "NOG_description"]
+        self.raw_members = events.xs(self.name, level='node')
+        self.members = self.raw_members#[self.raw_members["copies"] > self.threshold]
+        self.header = ["cluster", "NOG_category", "NOG_description", "duplications",
+                                 "transfers", "losses", "originations", "copies"]
 
-    def get_best_cog_info(self, clst):
-        best_cog = list(self.name2cluster[clst].cog_members.keys())[0]
-        best_cog_cat = self.annotation.cog2cat[list(self.name2cluster[clst].cog_members.keys())[0]]
-        best_cog_desc = self.annotation.cog2desc[list(self.name2cluster[clst].cog_members.keys())[0]]
-        return (best_cog, best_cog_cat, best_cog_desc)
-
-    def get_all_cog_info(self, clst):
-        cogs = to_ssv(*self.name2cluster[clst].cog_members.keys())
-        counts = to_ssv(*[str(i) for i in self.name2cluster[clst].cog_members.values()])
-        cats = to_ssv(*set(self.annotation.cog2cat[cog] for cog in self.name2cluster[clst].cog_members.keys()))
-        descs = to_ssv(*set(self.annotation.cog2desc[cog] for cog in self.name2cluster[clst].cog_members.keys()))
-        return (cogs, counts, cats, descs)
+    def get_cog_info(self, clst):
+        cog_cat = self.annotation.cog2cat[clst]
+        cog_desc = self.annotation.cog2desc[clst]
+        return (cog_cat, cog_desc)
 
     def __str__(self):
         lines = []
         lines.append(to_tsv(*self.header))
         for line in self.members.iterrows():
             clst = line[0]
-            best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
+            cog_cat, cog_desc = self.get_cog_info(clst)
             events = [str(i) for i in line[1]]
-            cogs, counts, cats, descs = self.get_all_cog_info(clst)
             clst_line = to_tsv(
                         clst,
-                        best_cog,
-                        best_cog_cat,
-                        best_cog_desc,
-                        *events,
-                        cogs,
-                        counts,
-                        cats,
-                        descs)
+                        cog_cat,
+                        cog_desc,
+                        *events)
             lines.append(clst_line)
         return "\n".join(lines)
 
     def gains_losses(self, descendant):
         gains_df = pd.DataFrame(columns=self.raw_members.columns)
         losses_df = pd.DataFrame(columns=self.raw_members.columns)
-        for line in self.members.iterrows():
+        transfers_df = pd.DataFrame(columns=self.raw_members.columns)
+        for line in self.raw_members.iterrows():
             clst = line[0]
-            if line[1]['copies'] < 0.5 and descendant.raw_members.loc[clst]['copies'] >= 0.5:
-                gains_df = gains_df.append(descendant.raw_members.loc[clst])
-            elif line[1]['copies'] >= 0.5 and descendant.raw_members.loc[clst]['copies'] < 0.5:
+            if line[1].loc[['originations']].sum() >= self.threshold:
+                gains_df = gains_df.append(self.raw_members.loc[clst])
+            elif line[1].loc['losses'] > self.threshold:
                 losses_df = losses_df.append(descendant.raw_members.loc[clst])
-        return self.print_gains(gains_df), self.print_losses(losses_df)
+            if line[1].loc[['transfers']].sum() >= self.threshold:
+                transfers_df = transfers_df.append(self.raw_members.loc[clst])
+        return self.print_gains(gains_df), self.print_losses(losses_df), self.print_transfers(transfers_df)
 
     def print_gains(self, gains_df):
         lines = []
-        lines.append(to_tsv("cluster", "type of gain", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "NOG cat", "NOGs", "NOG_description"))
+        lines.append(to_tsv("cluster", "acquisition_freq", "NOG_category", "NOG_description"))
         for line in gains_df.iterrows():
-            if line[1]['transfers'] >= 0.5 and line[1]['originations'] >= 0.5:
-                gain_type = "transfer/origination"
-            elif line[1]['transfers'] >= 0.5:
-                gain_type = "transfer"
-            elif line[1]['originations'] >= 0.5:
-                gain_type = "origination"
-            else:
-                gain_type = "-"
-            clst = line[1]['clst']
-            best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
-            cogs, counts, cats, descs = self.get_all_cog_info(clst)
+            clst = line[0]
+            cog_cat, cog_desc = self.get_cog_info(clst)
             lines.append(to_tsv(clst,
-                                gain_type,
-                                best_cog,
-                                best_cog_cat,
-                                best_cog_desc,
-                                cogs,
-                                cats,
-                                descs))
+                                str(line[1].loc['originations']),
+                                cog_cat,
+                                cog_desc))
         return "\n".join(lines)
 
     def print_losses(self, losses_df):
         lines = []
-        lines.append(to_tsv("cluster", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "NOG cat", "NOGs", "NOG_description"))
+        lines.append(to_tsv("cluster", "loss_freq", "NOG_category", "NOG_description"))
         for line in losses_df.iterrows():
             clst = line[0]
-            best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
-            cogs, counts, cats, descs = self.get_all_cog_info(clst)
+            cog_cat, cog_desc = self.get_cog_info(clst)
             lines.append(to_tsv(clst,
-                                best_cog,
-                                best_cog_cat,
-                                best_cog_desc,
-                                cogs,
-                                cats,
-                                descs))
+                                str(line[1].loc['losses']),
+                                cog_cat,
+                                cog_desc))
         return "\n".join(lines)
+
+
+    def print_transfers(self, transfers_df):
+        lines = []
+        lines.append(to_tsv("cluster", "transfer_freq", "NOG_category", "NOG_description"))
+        for line in transfers_df.iterrows():
+            clst = line[0]
+            cog_cat, cog_desc = self.get_cog_info(clst)
+            lines.append(to_tsv(clst,
+                                str(line[1].loc['transfers']),
+                                cog_cat,
+                                cog_desc))
+        return "\n".join(lines)
+
+def check_origination(n, clst, events):
+    if not (n.is_leaf() or n.is_root()):
+    #print(n.name, events.loc['0ZTPB'].loc[[n.up.name, n.name, n.children[0].name, n.children[1].name]].sum())
+        try:
+            if events.loc[clst].loc[[n.up.name, n.name, n.children[0].name, n.children[1].name], 'originations'].sum() > 0.7:
+                return(clst)
+        except:
+            pass
+
+
+
+# pd.options.mode.chained_assignment = None
+# header = ['species_tree', 'cluster', 'node', 'duplications','transfers', 'losses', 'originations', 'copies']
+# all_events = pd.read_csv("MGIV-eurySel-corrected/events.txt", sep='\t', names=header)
+# events = all_events[all_events['species_tree'] == "eurySel.noSA1.chi2prune_clean"]
+# del events['species_tree']
+# # events['cluster'] = events.apply(lambda row: row['cluster'].split('.')[0], axis=1)
+# events['cluster'] = events['cluster'].str.replace('.clean.ufboot.ale', '')
+#
+# events.index = pd.MultiIndex.from_arrays([list(events['cluster']), list(events['node'])], names=["cluster", "node"])
+# del events['cluster']
+# del events['node']
+#
+#
+# tree = ete3.PhyloTree('species_trees/eurySel.noSA1.chi2prune_clean.tree', format=1)
+#
+# #for n in tree.traverse():
+# n = tree & "81"
+# for clst in set(events.index.get_level_values(0)):
+#      res = check_origination(n, clst, events)
+#      if res:
+#          print(res)
