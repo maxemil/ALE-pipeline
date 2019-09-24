@@ -37,13 +37,13 @@ class Annotation:
                 for line in handle:
                     if not line.startswith('#'):
                         line = line.split('\t')
-                        cog = line[9].split('|')[0]
+                        cog = line[10].split('|')[0]
                         try:
                             desc = self.cog_annotation[cog]
                         except:
-                            desc = line[11].strip()
+                            desc = line[12].strip()
                         seq_id = line[0]
-                        cat = line[10].split(', ')
+                        cat = line[11].split(', ')
                         self.cog2desc[cog] = desc
                         self.cog2cat[cog] = ";".join(cat)
                         self.id2cog[seq_id] = cog
@@ -74,14 +74,18 @@ class Cluster:
         return("\n".join(cog_lines))
 
 
-class Events:
-    def __init__(self, events_file, species_tree):
-        pd.options.mode.chained_assignment = None
-        self.header = ['species_tree', 'cluster', 'node', 'duplications',
-                  'transfers', 'losses', 'originations', 'copies']
-        all_events = pd.read_csv(events_file, sep='\t', names=self.header)
-        self.events = all_events[all_events['species_tree'] == species_tree]
-
+def parse_events(events_file, species_tree):
+    pd.options.mode.chained_assignment = None
+    header = ['species_tree', 'cluster', 'node', 'duplications',
+              'transfers', 'losses', 'originations', 'copies']
+    all_events = pd.read_csv(events_file, sep='\t', names=header)
+    events = all_events[all_events['species_tree'] == species_tree]
+    del events['species_tree']
+    events['cluster'] = events['cluster'].str.replace('.clean.ufboot.ale', '')
+    events.index = pd.MultiIndex.from_arrays([list(events['cluster']), list(events['node'])], names=["cluster", "node"])
+    del events['cluster']
+    del events['node']
+    return events
 
 class Node:
     def __init__(self, name, annotation, events, name2cluster, threshold):
@@ -89,10 +93,8 @@ class Node:
         self.annotation = annotation
         self.events = events
         self.name2cluster = name2cluster
-        self.raw_members = events.events[events.events['node'] == self.name]
+        self.raw_members = events.events.xs(self.name, level='node')
         self.members = self.raw_members[self.raw_members["copies"] > threshold]
-        self.members['clst'] = self.members.apply(lambda row: row['cluster'].split('.')[0], axis=1)
-        self.raw_members['clst'] = self.raw_members.apply(lambda row: row['cluster'].split('.')[0], axis=1)
         self.header = ["cluster", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "duplications",
                                  "transfers", "losses", "originations", "copies", "NOG", '#NOG_annotations',
                                  "NOG_category", "NOG_description"]
@@ -114,9 +116,9 @@ class Node:
         lines = []
         lines.append(to_tsv(*self.header))
         for line in self.members.iterrows():
-            clst = line[1]['clst']
+            clst = line[0]
             best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
-            events = [str(i) for i in line[1][['duplications','transfers', 'losses', 'originations', 'copies']]]
+            events = [str(i) for i in line[1]]
             cogs, counts, cats, descs = self.get_all_cog_info(clst)
             clst_line = to_tsv(
                         clst,
@@ -134,13 +136,12 @@ class Node:
     def gains_losses(self, descendant):
         gains_df = pd.DataFrame(columns=self.raw_members.columns)
         losses_df = pd.DataFrame(columns=self.raw_members.columns)
-        for clst in self.raw_members['clst']:
-            if (self.raw_members[self.raw_members['clst'] == clst]['copies'] < 0.5).tolist()[0] and \
-            (descendant.raw_members[descendant.raw_members['clst'] == clst]['copies'] >= 0.5).tolist()[0]:
-                gains_df = gains_df.append(descendant.raw_members[descendant.raw_members['clst'] == clst])
-            elif (self.raw_members[self.raw_members['clst'] == clst]['copies'] >= 0.5).tolist()[0] and \
-            (descendant.raw_members[descendant.raw_members['clst'] == clst]['copies'] < 0.5).tolist()[0]:
-                losses_df = losses_df.append(descendant.raw_members[descendant.raw_members['clst'] == clst])
+        for line in self.members.iterrows():
+            clst = line[0]
+            if line[1]['copies'] < 0.5 and descendant.raw_members.loc[clst]['copies'] >= 0.5:
+                gains_df = gains_df.append(descendant.raw_members.loc[clst])
+            elif line[1]['copies'] >= 0.5 and descendant.raw_members.loc[clst]['copies'] < 0.5:
+                losses_df = losses_df.append(descendant.raw_members.loc[clst])
         return self.print_gains(gains_df), self.print_losses(losses_df)
 
     def print_gains(self, gains_df):
@@ -172,7 +173,7 @@ class Node:
         lines = []
         lines.append(to_tsv("cluster", "Best_NOG", "Best_NOG_category", "Best_NOG_description", "NOG cat", "NOGs", "NOG_description"))
         for line in losses_df.iterrows():
-            clst = line[1]['clst']
+            clst = line[0]
             best_cog, best_cog_cat, best_cog_desc = self.get_best_cog_info(clst)
             cogs, counts, cats, descs = self.get_all_cog_info(clst)
             lines.append(to_tsv(clst,
