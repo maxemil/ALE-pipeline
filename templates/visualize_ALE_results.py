@@ -2,14 +2,52 @@
 import sys
 import pandas as pd
 import ete3
-from ETE3_styles import node_style_basic
-from ETE3_Utils import get_ancestor, set_node_style
 from numpy import log
 from xvfbwrapper import Xvfb
 import os
 
 vdisplay = Xvfb()
 vdisplay.start()
+
+
+def node_style_basic():
+    """
+    It generates a NodeStyle
+    :return: ETE3 NodeStyle Object
+    """
+    style = ete3.NodeStyle()
+    style["fgcolor"] = "#000000"
+    style["size"] = 0
+    style["vt_line_color"] = "#000000"
+    style["hz_line_color"] = "#000000"
+    style["vt_line_width"] = 1
+    style["hz_line_width"] = 1
+    style["vt_line_type"] = 0  # 0 solid, 1 dashed, 2 dotted
+    style["hz_line_type"] = 0
+    return style
+
+
+def get_ancestor(nodes):
+    ancestor = nodes[0]
+    for n in nodes:
+        ancestor = ancestor.get_common_ancestor(n)
+    return ancestor
+
+
+def set_node_style(tree, style, leaves=False, condition=None):
+    for n in tree.traverse():
+        if leaves:
+            if n.is_leaf() is False:
+                continue
+        if condition is None:
+            n.img_style = style()
+        else:
+            operator, node_feature, value = condition
+            if node_feature not in n.features:
+                continue
+            if operator(getattr(n, node_feature), value):
+                n.img_style = style()    
+
 
 def layout(node):
     if node.is_leaf():

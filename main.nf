@@ -22,7 +22,6 @@ def startup_message() {
     log.info "Currently looks for separator $params.separator between species and genes"
     log.info "if no extensions is given for input files, takes all files "
     log.info "in that directory"
-    log.info "Also need acces to Python_lib from ettemalab's bitbucket!"
     log.info ""
 }
 

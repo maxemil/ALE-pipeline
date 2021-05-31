@@ -1,11 +1,15 @@
 #! ${params.python3}
 print("${species_tree.baseName}")
 
-from ete3 import *
-from ETE3_Utils import *
-from ETE3_styles import *
+import ete3
 
-tree = Tree('$species_tree')
+def get_ancestor(nodes):
+    ancestor = nodes[0]
+    for n in nodes:
+        ancestor = ancestor.get_common_ancestor(n)
+    return ancestor
+
+tree = ete3.Tree('$species_tree')
 
 new_root = get_ancestor([tree.get_leaves_by_name(s)[0] for s in $params.outgroup_taxa])
 tree.set_outgroup(new_root)
