@@ -118,7 +118,7 @@ class Node:
             clst = line[0]
             if line[1].loc[['originations']].sum() >= self.threshold:
                 gains_df = gains_df.append(self.raw_members.loc[clst])
-            elif line[1].loc['losses'] > self.threshold:
+            elif line[1].loc['losses'] >= self.threshold:
                 losses_df = losses_df.append(descendant.raw_members.loc[clst])
             if line[1].loc[['transfers']].sum() >= self.threshold:
                 transfers_df = transfers_df.append(self.raw_members.loc[clst])

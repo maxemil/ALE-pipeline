@@ -11,10 +11,14 @@ parser.add_argument("-i", "--input", required=True,
                     help="list of names to be abbreviated")
 parser.add_argument("-o", "--output", default="species_map.txt",
                     help="long species names and their abbreviations")
+parser.add_argument("-l", "--list", required=False,
+                    help="existing list of abbreviations for some species")
 args = parser.parse_args()
 
 
-def get_code(name, verbosity=0):
+def get_code(name, existing_codes, verbosity=0):
+    if name in existing_codes:
+        return existing_codes[name]
     name_parts = re.split('\.|_|:|-', name)
     code_base = [s[0:2].upper() for s in name_parts[0:2]]
     code_add = []
@@ -26,6 +30,10 @@ def get_code(name, verbosity=0):
 
 
 def main(args):
+    if args.list:
+        existing_codes = {line.split()[0]:line.strip().split()[1] for line in open(args.list)}
+    else:
+        existing_codes = {}
     verbosity = 0
     names = [line.strip() for line in open(args.input)]
     assert len(names) == len(set(names))
@@ -33,7 +41,7 @@ def main(args):
     while names:
         code2name = defaultdict(list)
         for n in names:
-            code2name[get_code(n, verbosity)].append(n)
+            code2name[get_code(n, existing_codes, verbosity)].append(n)
         for k,v in code2name.items():
             if len(v) == 1:
                 name2code[v[0]] = k
